@@ -59,17 +59,25 @@ def thresholds(core_th: float, sat_mem_th: float):
 def run_scenario(judged: pd.DataFrame,
                  core_th: float = 0.30,
                  sat_mem_th: float = 0.70,
-                 assume_process_check: bool = False) -> dict:
+                 assume_process_check: bool = False,
+                 grant_codes: list[str] | None = None) -> dict:
     """시나리오 1회 실행 → 구성·순도·분산요건 요약.
 
     assume_process_check : True면 '메모리향 ≥ sat_mem_th 기업은 공정·위원회
     확인을 통과한다'고 가정(실사 확대 시나리오). 가정임을 결과에 표기.
+    grant_codes : 실사 '확정' 종목 코드 리스트 — 해당 종목만 공정·위원회
+    확인 True. assume_process_check(일괄 가정)와 달리 개별 판정 결과를
+    반영할 때 쓴다(가정이 아니라 확정).
     """
     d = judged.copy()
     if assume_process_check:
         grant = d["메모리향비중"] >= sat_mem_th
         d.loc[grant, "HBM공정확인"] = True
         d.loc[grant, "위원회확인"] = True
+    if grant_codes:
+        m = d["코드"].isin(list(grant_codes))
+        d.loc[m, "HBM공정확인"] = True
+        d.loc[m, "위원회확인"] = True
 
     with thresholds(core_th, sat_mem_th):
         sel = selection.select_constituents(d)
@@ -87,7 +95,8 @@ def run_scenario(judged: pd.DataFrame,
     return {
         "핵심문턱": f"{core_th:.0%}",
         "위성문턱": f"{sat_mem_th:.0%}",
-        "실사확대(가정)": "예" if assume_process_check else "-",
+        "실사확대(가정)": ("확정 " + str(len(grant_codes)) + "종목") if grant_codes
+                       else ("예" if assume_process_check else "-"),
         "종목수": len(res),
         "앵커/핵심/위성": "/".join(str(int((res["군"] == g).sum()))
                               for g in ("앵커", "핵심", "위성")),
@@ -96,7 +105,7 @@ def run_scenario(judged: pd.DataFrame,
         "R1 종목수≥10": verdicts["[R1]"],
         "R2 ≤30%": verdicts["[R2]"],
         "R3 ≤20%": verdicts["[R3]"],
-        "_구성": res[["종목명", "군", "편입비중(%)"]],
+        "_구성": res[["종목명", "코드", "군", "편입비중(%)"]],
     }
 
 
