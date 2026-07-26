@@ -31,7 +31,8 @@ load_dotenv()
 
 from etf.capacity import EOK, fetch_adv, max_aum  # noqa: E402
 from etf.compliance import check_diversification  # noqa: E402
-from etf.cu_design import build_pdf, min_cu_notional  # noqa: E402
+from etf.cu_design import (DEFAULT_MAX_DEV_BP,  # noqa: E402
+                           build_pdf, min_cu_notional)
 from etf.scenario_min10 import load_judged, run_scenario  # noqa: E402
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -94,7 +95,7 @@ def main():
     for code, cap in worst3.items():
         print(f"    허용 AUM 하위: {names.get(code, code)} {cap:,.0f}억")
 
-    print("\n[CU 재산출] 허용 총괴리 10bp")
+    print(f"\n[CU 재산출] 허용 총괴리 {DEFAULT_MAX_DEV_BP:g}bp · 가격 ±5% 교란 강건성")
     import FinanceDataReader as fdr
     end = dt.date.today()
     px = {}
@@ -102,9 +103,9 @@ def main():
         s = fdr.DataReader(code, end - dt.timedelta(days=14), end)["Close"].dropna()
         px[code] = float(s.iloc[-1])
     prices = pd.Series(px)
-    grid = min_cu_notional(w, prices, max_total_dev_bp=10.0)
-    ok_rows = grid[grid["충족"]]
-    rec_eok = int(ok_rows.iloc[0]["CU금액(억)"]) if len(ok_rows) else None
+    grid = min_cu_notional(w, prices)          # 허용치 = DEFAULT_MAX_DEV_BP(15bp)
+    firm = grid[grid["강건"]]          # 오늘 종가 운이 아니라 교란에도 버티는 규모
+    rec_eok = int(firm.iloc[0]["CU금액(억)"]) if len(firm) else None
     print(grid.to_string(index=False))
     if rec_eok:
         pdf = build_pdf(w, prices, rec_eok * EOK)

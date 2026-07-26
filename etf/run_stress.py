@@ -5,7 +5,8 @@ etf/run_stress.py — 실데이터 스트레스 테스트 리포트 (최종 12�
 사용법:
     .venv/Scripts/python.exe etf/run_stress.py
 
-출력: etf/output/stress_report.csv + 콘솔 리포트
+출력: etf/output/stress_t1_tracking.csv, stress_t2_capacity.csv,
+      stress_t2b_assumptions.csv, stress_t3_redemption.csv + 콘솔 리포트
 """
 from __future__ import annotations
 
@@ -24,8 +25,9 @@ load_dotenv()
 from backtest.backtest import simulate_index  # noqa: E402
 from etf.capacity import fetch_adv, EOK  # noqa: E402
 from etf.run_tracking import build_events, fetch_prices  # noqa: E402
-from etf.stress_test import (redemption_endurance, stress_capacity,  # noqa: E402
-                             stress_tracking)
+from etf.stress_test import (redemption_endurance,  # noqa: E402
+                             stress_capacity,
+                             stress_capacity_assumptions, stress_tracking)
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(BASE, "etf", "output")
@@ -62,6 +64,19 @@ def main():
     print("\n[T2 유동성 가뭄 용량] 참여율 20%·청산 5일")
     print(cap.to_string(index=False))
 
+    # ── T2b: 관측이 아니라 '우리가 고른' 가정 두 개를 흔든다 ────────────
+    capa = stress_capacity_assumptions(w, adv)
+    capa["병목 종목"] = capa["병목 종목"].map(lambda x: f"{names.get(x, x)}")
+    print("\n[T2b 용량 가정 민감도] ADV 실측 고정 · 참여율 × 청산 허용일수")
+    print(capa.to_string(index=False))
+    worst = capa.iloc[-1]
+    print(f"  → 보수 가정(참여율 {worst['참여율']}·{worst['청산 허용일수']:g}일) "
+          f"{worst['용량(억)']:,.0f}억 — 기준의 {worst['기준 대비']}. "
+          "용량은 관측치가 아니라 가정의 함수다.")
+    capa_dry = stress_capacity_assumptions(w, adv, adv_factor=0.5)
+    print(f"  → 여기에 ADV 반토막까지 겹치면 "
+          f"{capa_dry.iloc[-1]['용량(억)']:,.0f}억 (최악 시나리오)")
+
     # ── T3: 복합 — 환매 내구성 ─────────────────────────────────────────
     print("\n[T3 환매 내구성] ADV 반토막 가정 (위기 복합)")
     rows = []
@@ -72,16 +87,21 @@ def main():
     t3 = pd.DataFrame(rows)
     print(t3.round(2).to_string(index=False))
 
+    # 표마다 별도 CSV — 한 파일에 이어붙이면 헤더가 겹쳐 다시 읽을 수 없다.
     os.makedirs(OUT_DIR, exist_ok=True)
-    out = os.path.join(OUT_DIR, "stress_report.csv")
-    with open(out, "w", encoding="utf-8-sig") as f:
-        f.write(f"# T1 하락장 추적오차 (구간 {win[0]}~{win[1]}, MDD {st.attrs['mdd']:.1%})\n")
-        st.round(3).to_csv(f)
-        f.write("\n# T2 유동성 가뭄 용량\n")
-        cap.to_csv(f, index=False)
-        f.write("\n# T3 환매 내구성 (ADV x0.5)\n")
-        t3.round(3).to_csv(f, index=False)
-    print(f"\n저장: {out}")
+    st2 = st.round(3).copy()
+    st2.insert(0, "구간", [f"{win[0]}~{win[1]} (MDD {st.attrs['mdd']:.1%})"
+                          if i == "하락 구간" else "전체 기간" for i in st2.index])
+    files = {
+        "stress_t1_tracking.csv": (st2, True),
+        "stress_t2_capacity.csv": (cap, False),
+        "stress_t2b_assumptions.csv": (capa, False),
+        "stress_t3_redemption.csv": (t3.round(3), False),
+    }
+    for fname, (df, with_index) in files.items():
+        df.to_csv(os.path.join(OUT_DIR, fname), index=with_index,
+                  encoding="utf-8-sig")
+    print(f"\n저장: {OUT_DIR}\\" + ", ".join(files))
 
 
 if __name__ == "__main__":

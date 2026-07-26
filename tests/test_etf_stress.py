@@ -13,7 +13,8 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from etf.capacity import EOK  # noqa: E402
 from etf.stress_test import (drawdown_window, redemption_endurance,  # noqa: E402
-                             stress_capacity, stress_tracking)
+                             stress_capacity, stress_capacity_assumptions,
+                             stress_tracking)
 
 ok = True
 
@@ -70,6 +71,26 @@ check("용량이 ADV에 정비례 (×0.5 → 절반)",
       abs(cap["용량(억)"].iloc[1] - cap["용량(억)"].iloc[0] / 2) < 0.5,
       cap["용량(억)"].tolist())
 check("병목 종목 불변 (SML)", (cap["병목 종목"] == "SML").all())
+
+# ── 3b) 용량 가정 민감도: 참여율·허용일수에도 정비례 ──────────────────
+# 기준 20%·5일 대비 10%·3일 = 0.5×0.6 = 0.30배 (손계산)
+capa = stress_capacity_assumptions(w, adv, participations=(0.20, 0.10),
+                                   day_grid=(5.0, 3.0))
+base = float(capa.loc[(capa["참여율"] == "20%")
+                      & (capa["청산 허용일수"] == 5.0), "용량(억)"].iloc[0])
+tight = float(capa.loc[(capa["참여율"] == "10%")
+                       & (capa["청산 허용일수"] == 3.0), "용량(억)"].iloc[0])
+check("참여율 10%·3일 = 기준의 0.30배", abs(tight - base * 0.30) < 0.5,
+      f"base={base} tight={tight}")
+check("기준 대비 배수 표기 정확", capa["기준 대비"].iloc[-1] == "×0.30",
+      capa["기준 대비"].tolist())
+check("가정 민감도에서도 병목 불변 (SML)", (capa["병목 종목"] == "SML").all())
+# ADV 계수와 곱해져야 한다 (두 축은 독립·곱셈)
+capa_dry = stress_capacity_assumptions(w, adv, participations=(0.20,),
+                                       day_grid=(5.0,), adv_factor=0.5)
+check("ADV 계수는 가정 축과 곱셈으로 결합",
+      abs(float(capa_dry["용량(억)"].iloc[0]) - base * 0.5) < 0.5,
+      f"got={capa_dry['용량(억)'].iloc[0]} expect={base * 0.5}")
 
 # ── 4) redemption_endurance 손계산 ────────────────────────────────────
 # AUM 100억, SML 비중 50%→50억 포지션, ADV 10억×0.5×참여20% = 1억/일

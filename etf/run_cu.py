@@ -20,7 +20,8 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from etf.cu_design import EOK, build_pdf, min_cu_notional  # noqa: E402
+from etf.cu_design import (DEFAULT_MAX_DEV_BP, EOK,  # noqa: E402
+                           build_pdf, min_cu_notional)
 from etf.run_tracking import load_constituents, source_line  # noqa: E402
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -42,8 +43,12 @@ def fetch_last_prices(codes: list[str]) -> pd.Series:
 
 def main():
     ap = argparse.ArgumentParser(description="실데이터 CU/PDF 설계")
-    ap.add_argument("--max-dev-bp", type=float, default=10.0,
-                    help="총괴리 허용치(bp, 기본 10)")
+    ap.add_argument("--max-dev-bp", type=float, default=DEFAULT_MAX_DEV_BP,
+                    help=f"총괴리 허용치(bp, 기본 {DEFAULT_MAX_DEV_BP:g})")
+    ap.add_argument("--shock", type=float, default=0.05,
+                    help="강건성 검정 가격 교란폭 (기본 ±5%%, 0이면 끔)")
+    ap.add_argument("--trials", type=int, default=300,
+                    help="강건성 검정 시행 횟수 (기본 300)")
     args = ap.parse_args()
 
     c = load_constituents()
@@ -55,17 +60,24 @@ def main():
     prices = fetch_last_prices(codes)
     print(f"{source_line(c)} · 최신 종가 수집 (기준일 {dt.date.today()})")
 
-    grid = min_cu_notional(weights, prices, max_total_dev_bp=args.max_dev_bp)
-    print(f"\n[CU 후보별 괴리] 허용 총괴리 {args.max_dev_bp:g}bp")
+    grid = min_cu_notional(weights, prices, max_total_dev_bp=args.max_dev_bp,
+                           shock=args.shock, n_trials=args.trials)
+    print(f"\n[CU 후보별 괴리] 허용 총괴리 {args.max_dev_bp:g}bp · "
+          f"강건 = 가격 ±{args.shock:.0%} 교란 {args.trials}회 전부 허용치 이내")
     print(grid.to_string(index=False))
 
+    firm = grid[grid["강건"]] if "강건" in grid.columns else grid[grid["충족"]]
     ok_rows = grid[grid["충족"]]
-    if len(ok_rows) == 0:
-        print("\n⚠ 어떤 후보도 허용치를 만족하지 못함 — 후보를 키우거나 허용치 완화 필요")
+    if len(firm) == 0:
+        print("\n⚠ 어떤 후보도 강건하지 않음 — 후보를 키우거나 허용치 완화 필요")
         rec_eok = int(grid.iloc[-1]["CU금액(억)"])
     else:
-        rec_eok = int(ok_rows.iloc[0]["CU금액(억)"])
-    print(f"\n[권장 CU] {rec_eok}억 원 (허용치 만족 최소 규모)")
+        rec_eok = int(firm.iloc[0]["CU금액(억)"])
+    print(f"\n[권장 CU] {rec_eok}억 원 (교란에도 허용치를 지키는 최소 규모)")
+    if len(ok_rows) and int(ok_rows.iloc[0]["CU금액(억)"]) != rec_eok:
+        lucky = ok_rows.iloc[0]
+        print(f"  ※ 오늘 종가만 보면 {int(lucky['CU금액(억)'])}억도 통과하지만 "
+              f"교란 초과율 {lucky['초과율(%)']:.0f}% — 반올림 격자 운이다. 채택 안 함.")
 
     r = build_pdf(weights, prices, rec_eok * EOK)
     pdf = r["pdf"].copy()

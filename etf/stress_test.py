@@ -89,6 +89,36 @@ def stress_capacity(weights: pd.Series, adv_krw: pd.Series,
     return pd.DataFrame(rows)
 
 
+def stress_capacity_assumptions(weights: pd.Series, adv_krw: pd.Series,
+                                participations: tuple = (0.30, 0.20, 0.15, 0.10),
+                                day_grid: tuple = (5.0, 3.0),
+                                adv_factor: float = 1.0) -> pd.DataFrame:
+    """[T2b] 용량을 떠받치는 **가정 두 개**를 흔든다.
+
+    T2는 ADV(관측치)만 흔들었지만, 용량 = 허용일수 × 참여율 × ADV / 비중 이므로
+    참여율·청산 허용일수도 결과를 정비례로 좌우한다. 이 둘은 관측이 아니라
+    우리가 고른 숫자라서, 안 흔들면 "1,994억"이 관측치인 양 읽힌다.
+
+    기본 20%·5일은 넉넉한 쪽 가정이다 — 시장충격을 아끼려 참여율을 10%로 낮추고
+    청산을 3일로 조이면 용량은 0.5×0.6 = 0.3배가 된다.
+    """
+    rows = []
+    for part in participations:
+        for days in day_grid:
+            s, _ = max_aum(weights, adv_krw * adv_factor,
+                           participation=part, max_days=days)
+            rows.append({
+                "참여율": f"{part:.0%}",
+                "청산 허용일수": days,
+                "용량(억)": round(s["용량(억)"], 0),
+                "병목 종목": s["병목 종목"],
+                "기준 대비": f"×{part / 0.20 * days / 5.0:.2f}",
+            })
+    out = pd.DataFrame(rows)
+    out.attrs["adv_factor"] = adv_factor
+    return out
+
+
 def redemption_endurance(weights: pd.Series, adv_krw: pd.Series,
                          aum_krw: float, adv_factor: float = 0.5,
                          participation: float = 0.20) -> pd.Series:
