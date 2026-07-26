@@ -164,7 +164,7 @@ A(Paragraph("다섯 관문, 다섯 숫자", H1))
 A(Spacer(1, 3 * mm))
 A(grid(["관문", "질문", "실측 결과", "판정"],
        [["① 추적오차", "지수를 얼마나 따라가나",
-         "연 갭 61bp (TER45+비용16) · 현금 1%=92bp",
+         "연 갭 62bp (TER45+비용17) · 현금 1%=112bp",
          Paragraph("<font color='#1E7B45'><b>설계원칙 도출</b></font>", CELLC)],
         ["② 용량", "AUM 얼마까지 소화하나",
          "1,994억 원 (12종목 기준, 병목 넥스틴)",
@@ -201,25 +201,27 @@ A(Spacer(1, 2 * mm))
 A(grid(["상품", "HBM 순도(하한)", "구성 겹침", "1년 수익률", "비고"],
        [[Paragraph("<b>정가 HBM 지수 (자체)</b>", CELLB),
          Paragraph("<b>29.0%</b>", CELLBC), "—",
-         Paragraph("+207%", CELLC), "12종목 · 판정 커버 100%"],
-        ["KODEX 반도체", Paragraph("22.3%", CELLC), Paragraph("47%", CELLC),
-         Paragraph("+237%", CELLC), "광의 반도체 36종목"],
-        ["TIGER 반도체", Paragraph("20.6%", CELLC), Paragraph("47%", CELLC),
-         Paragraph("+243%", CELLC), "광의 반도체"],
-        ["TIGER 반도체TOP10", Paragraph("16.8%", CELLC), Paragraph("45%", CELLC),
-         Paragraph("+198%", CELLC), "대형 집중"],
-        ["KODEX AI반도체핵심장비", Paragraph("14.0%", CELLC), Paragraph("18%", CELLC),
-         Paragraph("+106%", CELLC), "장비 테마"],
-        ["SOL AI반도체소부장", Paragraph("11.8%", CELLC), Paragraph("19%", CELLC),
-         Paragraph("+79%", CELLC), "소부장 테마"],
+         Paragraph("+274%*", CELLC), "12종목 · 판정 커버 100%"],
+        ["KODEX 반도체", Paragraph("22.3%", CELLC), Paragraph("50%", CELLC),
+         Paragraph("+228%", CELLC), "광의 반도체 36종목"],
+        ["TIGER 반도체", Paragraph("20.6%", CELLC), Paragraph("50%", CELLC),
+         Paragraph("+233%", CELLC), "광의 반도체"],
+        ["TIGER 반도체TOP10", Paragraph("16.8%", CELLC), Paragraph("49%", CELLC),
+         Paragraph("+193%", CELLC), "대형 집중"],
+        ["KODEX AI반도체핵심장비", Paragraph("14.0%", CELLC), Paragraph("32%", CELLC),
+         Paragraph("+103%", CELLC), "장비 테마"],
+        ["SOL AI반도체소부장", Paragraph("11.8%", CELLC), Paragraph("31%", CELLC),
+         Paragraph("+75%", CELLC), "소부장 테마"],
         ["PLUS 글로벌HBM반도체", Paragraph("산출불가", CELLC), "—",
-         Paragraph("+427%", CELLC), "해외주 전용(국내주 0)"]],
+         Paragraph("+423%", CELLC), "해외주 전용(국내주 0)"]],
        [46 * mm, 30 * mm, 22 * mm, 26 * mm, 54 * mm]))
 A(Spacer(1, 3 * mm))
 A(box([(BODY, "이름에 'HBM'을 단 유일한 기존 상품은 <b>국내 주식을 한 주도 담지 않는다.</b> "
               "국내 HBM 밸류체인을 담는 상품으로는 이 지수가 사실상 유일한 컨셉이다."),
        (SMALL, "순도 하한 = 비판정 종목(해외주 등)을 0으로 치는 보수적 값. 같은 잣대의 상대 비교로만 해석. "
-               "수익률·상관은 2025-07~2026-07, 상관계수 0.86~0.97.")]))
+               "수익률·상관은 2025-07~2026-07, 상관계수 0.84~0.96. "
+               "* 자체 수익률은 <b>오늘 확정한 12종목을 1년 소급 재생</b>한 값(사후선택)이고 경쟁 ETF는 "
+               "실제 거래된 수익률이다 — 잣대가 다르므로 순도·겹침만 동일 비교로 읽을 것.")]))
 A(PageBreak())
 
 # ═══════════════ 3. 최종 구성 ═══════════════
@@ -299,17 +301,19 @@ A(Paragraph("지수 1년 실측 경로에 보수·매매비용·현금보유를 
 A(Spacer(1, 2 * mm))
 A(grid(["시나리오", "TER", "매매비용", "현금", "지수 대비 연간 부진"],
        [["기본", Paragraph("45bp", CELLC), Paragraph("30bp", CELLC),
-         Paragraph("0%", CELLC), Paragraph("<b>61bp</b> (TER 45 + 비용 16)", CELL)],
+         Paragraph("0%", CELLC), Paragraph("<b>62bp</b> (TER 45 + 비용 17)", CELL)],
         ["저보수", Paragraph("15bp", CELLC), Paragraph("10bp", CELLC),
-         Paragraph("0%", CELLC), "20bp"],
+         Paragraph("0%", CELLC), "21bp"],
         [Paragraph("<b>현금 1% 보유</b>", CELL), Paragraph("45bp", CELLC),
          Paragraph("30bp", CELLC), Paragraph("1%", CELLC),
-         Paragraph("<b><font color='#B3261E'>152bp — 현금 몫이 92bp</font></b>", CELL)]],
+         Paragraph("<b><font color='#B3261E'>174bp — 현금 몫이 112bp</font></b>", CELL)]],
        [30 * mm, 20 * mm, 22 * mm, 16 * mm, 90 * mm]))
 A(Spacer(1, 2 * mm))
-A(box([(BODY, "연 +200%로 달리는 테마에서는 <b>현금 1%가 보수(45bp)의 2배를 갉아먹는다.</b> "
+A(box([(BODY, "연 +270%로 달리는 테마에서는 <b>현금 1%가 보수(45bp)의 2.5배를 갉아먹는다.</b> "
               "따라서 1번 운용 원칙: 현물설정(in-kind) 극대화, 현금 최소화."),
-       (SMALL, "추적오차(연율) 기본 시나리오 8.9bp 수준 · 시뮬 기간 2025-07-28~2026-07-24 (지수 +207%)")]))
+       (SMALL, "추적오차(연율) 기본 시나리오 9.2bp 수준 · 시뮬 기간 2025-07-28~2026-07-24 "
+               "(최종 12종목, 지수 +274%) · 현금 드래그는 지수 상승률에 비례하므로 "
+               "상승률이 꺾이면 함께 줄어든다")]))
 A(Spacer(1, 5 * mm))
 A(Paragraph("용량과 설정단위 — 숫자 두 개", BIG))
 A(grid(["항목", "값", "결정 요인"],
@@ -320,7 +324,7 @@ A(grid(["항목", "값", "결정 요인"],
         ["설정단위(CU)", Paragraph("<b>7억 원 (7만 좌)</b>", CELLBC),
          "정수 주식수 총괴리 6.3bp ≤ 허용 10bp · 0주 종목 없음"],
         ["정밀도 병목", Paragraph("SK하이닉스", CELLC),
-         "주당 176만원 → 1CU에 52주 · 반올림 단위가 굵다 (CU 15억이면 2.2bp)"]],
+         "주당 176만원 → 1CU에 73주 · 반올림 단위가 굵다 (CU 15억이면 2.2bp)"]],
        [34 * mm, 34 * mm, 110 * mm]))
 A(PageBreak())
 
@@ -348,8 +352,9 @@ A(box([(BODY, "<b>이 문서가 말하지 않은 것 — 한계와 가정.</b>")
               "종가×거래량 근사 사용."),
        (BODY, "· 추적오차 시뮬의 리밸런싱은 분기 재고정 근사 — 실제 정기변경(심사)과 다를 수 있다."),
        (BODY, "· 위성 5종목의 노출도 값은 판정 스냅샷 기준 — 다음 사업보고서에서 갱신된다."),
-       (BODY, "· 지수 1년 성과(+207%)는 HBM 슈퍼사이클 구간의 실측일 뿐, 미래 수익을 시사하지 않는다. "
-              "변동성 66%, 최대낙폭 -32%의 고위험 테마다."),
+       (BODY, "· 지수 1년 성과(+274%)는 오늘 확정한 구성을 소급 재생한 값이라 종목 선정의 "
+              "사후이점(look-ahead)이 실려 있다. HBM 슈퍼사이클 구간의 실측일 뿐 미래 수익을 "
+              "시사하지 않는다. 변동성 67%, 최대낙폭 -31%의 고위험 테마다."),
        (SMALL, "본 문서는 학습 목적의 모의 설계서다. 투자 권유가 아니며, 어떤 매매의 근거도 되지 않는다. "
                "모든 수치는 jeongga_hbm_etf 저장소의 코드로 재현 가능하다 (테스트 145건).")],
       title="정직 고지", title_bg=NAVY))

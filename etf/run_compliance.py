@@ -16,7 +16,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from etf.compliance import check_diversification, remediation_notes  # noqa: E402
-from etf.run_tracking import load_constituents  # noqa: E402
+from etf.run_tracking import load_constituents, source_line  # noqa: E402
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(BASE, "etf", "output")
@@ -33,7 +33,7 @@ def main():
     for code, name in names.items():
         rep["실측"] = rep["실측"].str.replace(code, f"{name}", regex=False)
 
-    print("[지수형 ETF 분산요건 점검] 구성표_실데이터_20260723 기준")
+    print(f"[지수형 ETF 분산요건 점검] {source_line(c)}")
     print(rep.to_string(index=False))
 
     notes = remediation_notes(w)

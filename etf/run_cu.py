@@ -21,7 +21,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from etf.cu_design import EOK, build_pdf, min_cu_notional  # noqa: E402
-from etf.run_tracking import load_constituents  # noqa: E402
+from etf.run_tracking import load_constituents, source_line  # noqa: E402
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(BASE, "etf", "output")
@@ -53,7 +53,7 @@ def main():
     weights = weights / weights.sum()
 
     prices = fetch_last_prices(codes)
-    print(f"최신 종가 수집 (기준일 {dt.date.today()})")
+    print(f"{source_line(c)} · 최신 종가 수집 (기준일 {dt.date.today()})")
 
     grid = min_cu_notional(weights, prices, max_total_dev_bp=args.max_dev_bp)
     print(f"\n[CU 후보별 괴리] 허용 총괴리 {args.max_dev_bp:g}bp")

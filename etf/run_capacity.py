@@ -2,8 +2,8 @@
 """
 etf/run_capacity.py — 실데이터 용량 리포트 (확정 구성표 기준)
 =============================================================
-구성표 7종목의 최근 60거래일 실제 거래대금으로 "이 ETF는 AUM 얼마까지
-소화 가능한가"를 산출한다.
+확정 구성표(run_tracking.load_constituents)의 최근 60거래일 실제 거래대금으로
+"이 ETF는 AUM 얼마까지 소화 가능한가"를 산출한다.
 
 사용법:
     .venv/Scripts/python.exe etf/run_capacity.py [--participation 0.2]
@@ -22,7 +22,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from etf.capacity import EOK, capacity_table, fetch_adv, max_aum  # noqa: E402
-from etf.run_tracking import load_constituents  # noqa: E402
+from etf.run_tracking import load_constituents, source_line  # noqa: E402
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(BASE, "etf", "output")
@@ -46,6 +46,7 @@ def main():
     weights = pd.Series((c["편입비중(%)"] / 100.0).values, index=codes)
     weights = weights / weights.sum()
 
+    print(f"{source_line(c)}")
     print(f"ADV 수집: 최근 {args.lookback}거래일 (기준일 {dt.date.today()})")
     adv = fetch_adv(codes, lookback_days=args.lookback)
 

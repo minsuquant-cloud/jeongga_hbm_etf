@@ -27,7 +27,8 @@ load_dotenv()
 from backtest.backtest import simulate_index, ann_vol, cagr, correlation  # noqa: E402
 from etf.benchmark import (fetch_etf_holdings, load_exposures,  # noqa: E402
                            overlap, purity_metrics)
-from etf.run_tracking import build_events, fetch_prices, load_constituents  # noqa: E402
+from etf.run_tracking import (build_events, fetch_prices,  # noqa: E402
+                              load_constituents, source_line)
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(BASE, "etf", "output")
@@ -99,7 +100,8 @@ def main():
                      "상관계수": round(corr, 3) if corr == corr else np.nan})
 
     rep = pd.DataFrame(rows)
-    print(f"\n[HBM 순도·성과 비교] 보유내역 기준일 {pdf_date} · 성과 1년")
+    print(f"\n[HBM 순도·성과 비교] {source_line(c)} · "
+          f"보유내역 기준일 {pdf_date} · 성과 1년")
     print(rep.to_string(index=False))
     print("\n읽는 법: '순도 하한'은 비판정 종목(해외주 등)을 0으로 치는 보수적 "
           "하한 — 커버리지가 낮은 ETF(글로벌형)의 실제 순도는 이보다 높을 수 "
