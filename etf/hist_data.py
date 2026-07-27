@@ -26,7 +26,11 @@ from pathlib import Path
 
 import pandas as pd
 
-DERIVED = Path(os.environ.get("QUANT_DATA_DERIVED", r"D:/data/_derived"))
+# 융합본(_live: FnGuide 12.5년 + 실시간)이 있으면 우선 사용.
+_LIVE, _SNAP = Path(r"D:/data/_live"), Path(r"D:/data/_derived")
+DERIVED = Path(os.environ.get(
+    "QUANT_DATA_DERIVED",
+    _LIVE if (_LIVE / "price_adj_close.parquet").exists() else _SNAP))
 BASE = Path(__file__).resolve().parent.parent
 FINAL = BASE / "data" / "processed" / "구성표_실사확정_20260725.csv"
 
