@@ -68,6 +68,32 @@ try:
 except ValueError:
     check("음수 비중 방어", True)
 
+# ── 7) 두 판정 파일의 노출도가 갈리면 예외 (잣대 분열 방지) ───────────
+import etf.benchmark as bm  # noqa: E402
+
+orig_final = bm.JUDGED_FINAL
+try:
+    bm.JUDGED_FINAL = os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), "data", "processed", "후보리스트_20260723.csv")
+    try:
+        bm.load_exposures()          # 노출도 열이 없는 파일 → 읽기 단계에서 실패
+        check("판정 파일 불일치 감지", False, "예외 없이 통과(회귀!)")
+    except (ValueError, KeyError):
+        check("판정 파일 불일치 감지", True)
+finally:
+    bm.JUDGED_FINAL = orig_final
+check("정상 경로는 그대로 동작", len(bm.load_exposures()) >= 30)
+
+# ── 8) 경쟁사 순도가 전멸하면 리포트를 덮어쓰지 않는다 (fail-closed) ──
+rep_all_nan = pd.DataFrame([
+    {"ETF": "자체", "순도 하한(%)": 29.0},
+    {"ETF": "경쟁A", "순도 하한(%)": float("nan")},
+    {"ETF": "경쟁B", "순도 하한(%)": float("nan")}])
+check("전멸 감지 조건이 참", rep_all_nan.iloc[1:]["순도 하한(%)"].notna().sum() == 0)
+rep_ok = rep_all_nan.copy()
+rep_ok.loc[1, "순도 하한(%)"] = 22.3
+check("일부만 실패하면 통과", rep_ok.iloc[1:]["순도 하한(%)"].notna().sum() > 0)
+
 print()
 print("전부 통과" if ok else "실패 있음")
 sys.exit(0 if ok else 1)

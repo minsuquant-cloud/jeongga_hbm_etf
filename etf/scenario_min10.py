@@ -32,10 +32,13 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import src.selection as selection  # noqa: E402
+import src.universe as universe  # noqa: E402
 import src.weighting as weighting  # noqa: E402
 from etf.compliance import check_diversification  # noqa: E402
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# 실사 '이전' 기준선을 쓰는 것이 맞다 — 실사 확대 시나리오가 무엇을 바꾸는지
+# 보려면 S0가 실사 전이어야 한다. (구성표와 달리 여기는 옛 파일이 정답)
 JUDGED = os.path.join(BASE, "data", "processed", "판정완료_20260723.csv")
 
 
@@ -69,7 +72,11 @@ def run_scenario(judged: pd.DataFrame,
     확인 True. assume_process_check(일괄 가정)와 달리 개별 판정 결과를
     반영할 때 쓴다(가정이 아니라 확정).
     """
-    d = judged.copy()
+    # 사전 스크린(methodology 1장)을 먼저 집행한다 — selection.py는 이 검사를
+    # 명시적으로 자기 책임에서 제외하므로, 호출자인 여기가 걸러 넘겨야 한다.
+    d, rejects = universe.prescreen(judged)
+    unchecked = d.attrs.get("unchecked", [])
+    d = d.copy()
     if assume_process_check:
         grant = d["메모리향비중"] >= sat_mem_th
         d.loc[grant, "HBM공정확인"] = True
@@ -105,7 +112,10 @@ def run_scenario(judged: pd.DataFrame,
         "R1 종목수≥10": verdicts["[R1]"],
         "R2 ≤30%": verdicts["[R2]"],
         "R3 ≤20%": verdicts["[R3]"],
+        "사전스크린 탈락": int(rejects["코드"].nunique()) if len(rejects) else 0,
         "_구성": res[["종목명", "코드", "군", "편입비중(%)"]],
+        "_스크린탈락": rejects,
+        "_스크린요약": universe.prescreen_summary(rejects, unchecked),
     }
 
 
@@ -125,6 +135,7 @@ def run_all(judged: pd.DataFrame | None = None) -> pd.DataFrame:
     rows = []
     for label, core, sat, proc in SCENARIOS:
         r = run_scenario(judged, core, sat, proc)
-        r.pop("_구성")
+        for k in ("_구성", "_스크린탈락", "_스크린요약"):
+            r.pop(k, None)
         rows.append({"시나리오": label, **r})
     return pd.DataFrame(rows)

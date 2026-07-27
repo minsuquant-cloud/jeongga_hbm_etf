@@ -43,11 +43,52 @@ COMPETITORS = {
 }
 
 
-def last_trading_day_str() -> str:
-    d = dt.date.today()
-    while d.weekday() >= 5:
-        d -= dt.timedelta(days=1)
-    return d.strftime("%Y%m%d")
+PROBE_TICKER = "091160"        # KODEX 반도체 — PDF 존재 여부 확인용 기준 ETF
+
+
+def business_days_desc(limit: int = 10) -> list[str]:
+    """오늘부터 거슬러 올라가는 영업일 목록(YYYYMMDD, 최신순).
+
+    주말만 넘기면 광복절 같은 평일 휴장일을 못 걸러 PDF 조회가 빈 응답이 된다.
+    거래소 영업일 캘린더(pykrx)를 우선 쓰고, 실패 시 주말만 넘기는 근사로
+    폴백하되 폴백 사실을 로그로 남긴다.
+    """
+    today = dt.date.today()
+    try:
+        from pykrx import stock as krx
+        days = krx.get_previous_business_days(
+            fromdate=(today - dt.timedelta(days=40)).strftime("%Y%m%d"),
+            todate=today.strftime("%Y%m%d"))
+        if len(days):
+            return [pd.Timestamp(d).strftime("%Y%m%d") for d in days][::-1][:limit]
+        raise RuntimeError("영업일 캘린더가 비어 있음")
+    except Exception as e:
+        print(f"[경고] 영업일 캘린더 조회 실패({e}) → 주말만 넘기는 근사 사용")
+        out, d = [], today
+        while len(out) < limit:
+            if d.weekday() < 5:
+                out.append(d.strftime("%Y%m%d"))
+            d -= dt.timedelta(days=1)
+        return out
+
+
+def resolve_pdf_date(limit: int = 4) -> str:
+    """**PDF가 실제로 존재하는** 최근 영업일을 찾는다.
+
+    영업일이라고 PDF가 있는 게 아니다 — 당일 보유내역은 장중·마감 직후엔
+    아직 공시 전이라 빈 응답이 온다(2026-07-27 13시 실행에서 전 종목 NaN으로
+    확인). 기준 ETF 하나로 실제 조회를 해보고 안 되면 하루씩 뒤로 물린다.
+    limit을 크게 잡지 말 것 — KRX 조회 한 번이 수십 초라 탐색이 곧 대기시간이다.
+    """
+    for d in business_days_desc(limit):
+        try:
+            fetch_etf_holdings(PROBE_TICKER, d)
+            return d
+        except Exception:
+            print(f"  [보유내역 미공시] {d} → 이전 영업일로")
+    raise RuntimeError(
+        f"최근 {limit}영업일 안에 조회 가능한 ETF 보유내역이 없습니다 — "
+        "KRX 로그인(.env) 또는 장 상태를 확인하십시오")
 
 
 def main():
@@ -74,7 +115,7 @@ def main():
                  "상관계수": 1.0})
 
     import FinanceDataReader as fdr
-    pdf_date = last_trading_day_str()
+    pdf_date = resolve_pdf_date()
     for tkr, name in COMPETITORS.items():
         try:
             hold = fetch_etf_holdings(tkr, pdf_date)
@@ -100,6 +141,12 @@ def main():
                      "상관계수": round(corr, 3) if corr == corr else np.nan})
 
     rep = pd.DataFrame(rows)
+    # fail-closed: 순도 비교가 이 리포트의 존재 이유다. 경쟁사 보유내역이
+    # 하나도 안 잡혔는데 저장하면, 멀쩡하던 직전 리포트를 NaN으로 덮어쓴다.
+    if rep.iloc[1:]["순도 하한(%)"].notna().sum() == 0:
+        raise RuntimeError(
+            f"경쟁 ETF 보유내역을 하나도 받지 못했습니다(기준일 {pdf_date}) — "
+            "기존 리포트를 덮어쓰지 않고 중단합니다. KRX 로그인·기준일 확인 필요")
     print(f"\n[HBM 순도·성과 비교] {source_line(c)} · "
           f"보유내역 기준일 {pdf_date} · 성과 1년")
     print(rep.to_string(index=False))

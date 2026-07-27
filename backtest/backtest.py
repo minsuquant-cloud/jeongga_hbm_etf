@@ -118,6 +118,14 @@ def build_event_schedule(prices: pd.DataFrame,
     reg_dates = sorted(snaps)
     hist: list = []
 
+    # fail-closed: 정기변경 시행일도 거래일이어야 한다. 아니면 `d in snaps`가
+    # 영원히 거짓이 되어 그 정기변경이 통째로 사라진다(simulate_index와 동일 사유).
+    off_cal = [d for d in reg_dates if d not in prices.index]
+    if off_cal:
+        raise ValueError(
+            "정기변경 시행일이 거래일이 아닙니다(가격 인덱스에 없음): "
+            f"{[str(d.date()) for d in off_cal]}")
+
     rets = prices.pct_change(fill_method=None)
     dates = prices.index[prices.index >= reg_dates[0]]
     is_month_end = pd.Series(dates, index=dates).groupby(
@@ -284,6 +292,16 @@ def simulate_index(prices: pd.DataFrame, events: list | dict,
     ev: dict = {}
     for e in sorted(events, key=lambda x: x["effective_date"]):
         ev.setdefault(e["effective_date"], []).append(e)
+    # fail-closed: 이벤트 날짜는 가격 인덱스(거래일)에 반드시 있어야 한다.
+    # 없으면 아래 `if d in ev`가 영원히 거짓이 되어 이벤트가 조용히 사라진다
+    # (최초 이벤트가 비거래일이면 지수 전체가 base에 평평하게 고정된다).
+    # 가격 결측에는 예외를 던지면서 이 경로만 열려 있던 것을 막는다.
+    off_cal = [d for d in ev if d not in prices.index]
+    if off_cal:
+        raise ValueError(
+            "이벤트 시행일이 거래일이 아닙니다(가격 인덱스에 없음): "
+            f"{[str(pd.Timestamp(d).date()) for d in sorted(off_cal)]} — "
+            "시행일을 거래일로 스냅한 뒤 다시 호출하십시오")
 
     rets = prices.pct_change(fill_method=None)
     px_rets = prices.pct_change(fill_method=None)  # 비중 drift 전용(항상 가격만)
@@ -365,7 +383,11 @@ def cagr(level: pd.Series) -> float:
 
 
 def ann_vol(level: pd.Series) -> float:
-    return float(level.pct_change().dropna().std(ddof=1) * np.sqrt(TRADING_DAYS))
+    # fill_method=None: 결측을 전진충전(ffill)하면 그 구간 수익률이 0으로 깔려
+    # 변동성이 과소계상된다. 레포 전역이 쓰는 규약과 맞춘다(pandas 기본값은
+    # 'pad'이며 향후 제거 예정 — FutureWarning 회피 겸용).
+    return float(level.pct_change(fill_method=None).dropna()
+                 .std(ddof=1) * np.sqrt(TRADING_DAYS))
 
 
 def max_drawdown(level: pd.Series) -> dict:
@@ -400,7 +422,8 @@ def turnover_by_reason(bt: pd.DataFrame) -> pd.Series:
 
 
 def correlation(level: pd.Series, benchmark: pd.Series, min_obs: int = 30) -> float:
-    a, b = level.pct_change().dropna(), benchmark.pct_change().dropna()
+    a = level.pct_change(fill_method=None).dropna()        # ffill 금지 — ann_vol 주석 참조
+    b = benchmark.pct_change(fill_method=None).dropna()
     idx = a.index.intersection(b.index)
     return float(np.corrcoef(a[idx], b[idx])[0, 1]) if len(idx) >= min_obs else np.nan
 

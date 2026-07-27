@@ -28,19 +28,40 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-JUDGED = os.path.join(BASE, "data", "processed", "판정완료_20260723.csv")
+PROC = os.path.join(BASE, "data", "processed")
+JUDGED = os.path.join(PROC, "판정완료_20260723.csv")
+# 실사확정본은 HBM공정확인·위원회확인만 뒤집었고 노출도는 손대지 않았다.
+# 그래도 노출도가 갈리면 순도 비교가 조용히 어긋나므로 매번 대조한다.
+JUDGED_FINAL = os.path.join(PROC, "판정완료_20260725_실사확정.csv")
 
 
-def load_exposures() -> pd.Series:
-    """판정완료 33종목의 HBM노출도(0~1). {6자리 코드: 노출도}"""
-    d = pd.read_csv(JUDGED, encoding="utf-8-sig")
+def _read_exposure(path: str) -> pd.Series:
+    d = pd.read_csv(path, encoding="utf-8-sig")
     codes = d["코드"].astype(str).str.zfill(6)
     expo = pd.to_numeric(d["HBM노출도"], errors="coerce")
     if expo.max() > 1.5:                      # % 표기(0~100)면 소수로 환산
         expo = expo / 100.0
-    out = pd.Series(expo.values, index=codes).dropna()
+    return pd.Series(expo.values, index=codes).dropna()
+
+
+def load_exposures() -> pd.Series:
+    """판정완료 33종목의 HBM노출도(0~1). {6자리 코드: 노출도}
+
+    두 판정 파일의 노출도가 어긋나면 예외 — 어느 쪽이 정본인지 사람이
+    정해야 하는 상황이지 조용히 한쪽을 쓸 일이 아니다(fail-closed).
+    """
+    out = _read_exposure(JUDGED)
     if len(out) == 0:
         raise ValueError("판정완료에서 HBM노출도를 읽지 못함")
+    if os.path.exists(JUDGED_FINAL):
+        fin = _read_exposure(JUDGED_FINAL)
+        common = out.index.intersection(fin.index)
+        drift = common[(out[common] - fin[common]).abs() > 1e-9]
+        if len(drift):
+            raise ValueError(
+                "판정 파일 간 HBM노출도 불일치 — 순도 비교의 잣대가 갈립니다: "
+                f"{drift.tolist()} (기준 {os.path.basename(JUDGED)} vs "
+                f"{os.path.basename(JUDGED_FINAL)})")
     return out
 
 

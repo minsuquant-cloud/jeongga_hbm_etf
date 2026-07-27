@@ -90,8 +90,7 @@ def main():
     # 표마다 별도 CSV — 한 파일에 이어붙이면 헤더가 겹쳐 다시 읽을 수 없다.
     os.makedirs(OUT_DIR, exist_ok=True)
     st2 = st.round(3).copy()
-    st2.insert(0, "구간", [f"{win[0]}~{win[1]} (MDD {st.attrs['mdd']:.1%})"
-                          if i == "하락 구간" else "전체 기간" for i in st2.index])
+    st2.index.name = f"구간 (하락 구간 = {win[0]}~{win[1]}, MDD {st.attrs['mdd']:.1%})"
     files = {
         "stress_t1_tracking.csv": (st2, True),
         "stress_t2_capacity.csv": (cap, False),

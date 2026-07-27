@@ -12,10 +12,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 자주 쓰는 명령어
 
 ```powershell
-# 테스트 3종 (전부 오프라인, 합계 33개)
-.venv\Scripts\python.exe tests\test_v2.py                   # v2 방법론 명세 9개
-.venv\Scripts\python.exe tests\test_schedule_v2.py          # 스케줄러 스모크 16개
-.venv\Scripts\python.exe tests\test_develop_integration.py  # 통합 8개
+# 테스트 12종 (전부 오프라인·네트워크 불필요, 검증 192건)
+Get-ChildItem tests\*.py | ForEach-Object { .venv\Scripts\python.exe $_.FullName }
+
+# 개별 — 엔진 3종
+.venv\Scripts\python.exe tests\test_v2.py                   # v2 방법론 명세
+.venv\Scripts\python.exe tests\test_schedule_v2.py          # 스케줄러 스모크
+.venv\Scripts\python.exe tests\test_develop_integration.py  # 통합
+# 개별 — 가드 2종 (2026-07-27 점검에서 막은 구멍의 회귀 테스트)
+.venv\Scripts\python.exe tests\test_universe_prescreen.py   # 사전 스크린 집행
+.venv\Scripts\python.exe tests\test_backtest_calendar.py    # 거래일 정합·결측 처리
 
 # 버퍼 정책 민감도 분석 (analysis/ 에 CSV 산출)
 .venv\Scripts\python.exe analysis\sensitivity_v2.py
@@ -27,14 +33,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```
 src/universe.py → selection.py → weighting.py → index_calc.py
-                     (선정)      (40/60+캡→IIF)   (M(t)=ΣIIF×FF×S×P)
+  (사전 스크린)       (선정)      (40/60+캡→IIF)   (M(t)=ΣIIF×FF×S×P)
 src/rebalance.py — v2 방법론: 정원 폐지·히스테리시스 버퍼·무대체 수시변경.
                    비중은 weighting.py에 위임(assign_weights_v2 = 어댑터)
 backtest/backtest.py — 이벤트 소비형 백테스트 (rebalance가 이벤트 생산,
                    backtest가 지수 재생. PR/TR 구분 — prices는 배당 미반영 수정주가여야 함)
 ```
 
-- 현재 구성: 7종목 (앵커 삼성전자·SK하이닉스 40% / 핵심 한미반도체·테크윙·디아이·넥스틴 / 위성 와이씨켐). `data/processed/구성표_실데이터_20260723.csv`
+- **현재 구성: 최종 12종목** (앵커 40 / 핵심 42 / 위성 18). `data/processed/구성표_실사확정_20260725.csv` — 7종목짜리 `구성표_실데이터_20260723.csv`는 폐기본이니 기본값으로 쓰지 말 것.
+- `src/universe.py`는 팀 스냅샷에서 **빈 파일**이었다(2026-07-27 확인). selection.py가 "사전 스크린은 내 책임 아님"이라며 지목하는데 집행 코드가 없어서, 관리종목·자본잠식·의견거절 종목이 그대로 18% 비중으로 편입됐다. methodology.md 1장 표 그대로 구현해 채웠고 `scenario_min10.run_scenario()`가 호출한다 — selection.py·weighting.py는 무수정.
+- `src/index_calc.py`는 이 레포에서 **아무도 import하지 않는다**(팀 하류 모듈 스냅샷). ETF 레이어의 지수 재생 경로는 `backtest.simulate_index`다.
 - 방법론 근거 문서: `docs/methodology.md`, 제출 PDF들은 `docs/제출문서/`
 - 엔진을 고쳐야 할 땐 팀 레포(`D:\dev\HBM_index`)와의 diff를 의식할 것 — 여긴 스냅샷이다.
 
@@ -42,28 +50,28 @@ backtest/backtest.py — 이벤트 소비형 백테스트 (rebalance가 이벤�
 
 모듈은 전부 "순수 로직(테스트 대상) + run_*.py(실데이터 러너)" 쌍. 산출 CSV는 `etf/output/`.
 
-> **구성 진입점은 하나다** — `run_tracking.load_constituents()`. capacity·cu·compliance·benchmark 러너가 전부 여기서 구성을 받는다. 기본값은 `구성표_실사확정_20260725.csv`(최종 12종목). 여길 옛 파일로 돌려놓으면 하위 4개 리포트가 통째로 폐기 구성을 산출한다(2026-07-26에 실제로 그 상태였음). 모든 리포트 머리글에 `source_line()`으로 출처를 찍으니, 리포트를 읽을 때 이 줄부터 확인할 것. **아래 실측치는 전부 최종 12종목 기준(2026-07-26 재실행).**
+> **구성 진입점은 하나다** — `run_tracking.load_constituents()`. capacity·cu·compliance·benchmark 러너가 전부 여기서 구성을 받는다. 기본값은 `구성표_실사확정_20260725.csv`(최종 12종목). 여길 옛 파일로 돌려놓으면 하위 4개 리포트가 통째로 폐기 구성을 산출한다(2026-07-26에 실제로 그 상태였음). 모든 리포트 머리글에 `source_line()`으로 출처를 찍으니, 리포트를 읽을 때 이 줄부터 확인할 것. **아래 실측치는 전부 최종 12종목 기준(2026-07-27 재실행).** 시장 데이터라 재실행할 때마다 소수점이 움직인다 — 문서 숫자를 고칠 땐 러너 전체를 같은 날 돌려 날짜를 통일할 것.
 
-1. ✅ **추적오차** (`nav_sim.py` / `run_tracking.py`) — bt(level·turnover)에서 NAV 재생. TER은 달력일 일할, 드래그는 로그 항등 분해(합계=실측). 실측: TER45+비용30 = 갭 62bp/년, **현금 1%만으로 112bp** — 초강세 테마라 현금관리 > 보수. (현금 드래그는 지수 상승률 비례 — 7종목 시절 92bp에서 는 건 구성이 나빠진 게 아니라 12종목 지수가 더 올라서다.)
-2. ✅ **용량** (`capacity.py` / `run_capacity.py`) — 용량 = min(허용일수×참여율×ADV/비중). 실측: **1,994억 원**(7종목 시절 613억), 병목은 와이씨켐(꼬마 비중)이 아니라 **넥스틴**(비중 3.25%×ADV 65억) — 12종목 재배분으로 넥스틴 비중이 10.6%→3.25%로 내려가며 3.3배 개선.
-3. ✅ **CU/PDF** (`cu_design.py` / `run_cu.py`) — floor+현금(현금 ≥0 불변식), 0주 종목 검출. **권장 CU 20억**(20만 좌 — 관행 5~20만 좌의 상단), 총괴리 6.3bp ≤ 허용 15bp. 정밀도 병목은 **SK하이닉스 주가 176만원**(1CU 209주 → -4.8bp).
+1. ✅ **추적오차** (`nav_sim.py` / `run_tracking.py`) — bt(level·turnover)에서 NAV 재생. TER은 달력일 일할, 드래그는 로그 항등 분해(합계=실측). 실측: TER45+비용30 = 갭 62bp/년, **현금 1%만으로 113bp** — 초강세 테마라 현금관리 > 보수. (현금 드래그는 지수 상승률 비례 — 7종목 시절 92bp에서 는 건 구성이 나빠진 게 아니라 12종목 지수가 더 올라서다.)
+2. ✅ **용량** (`capacity.py` / `run_capacity.py`) — 용량 = min(허용일수×참여율×ADV/비중). 실측: **1,968억 원**(7종목 시절 613억), 병목은 와이씨켐(꼬마 비중)이 아니라 **넥스틴**(비중 3.25%×ADV 65억) — 12종목 재배분으로 넥스틴 비중이 10.6%→3.25%로 내려가며 3.3배 개선.
+3. ✅ **CU/PDF** (`cu_design.py` / `run_cu.py`) — floor+현금(현금 ≥0 불변식), 0주 종목 검출. **권장 CU 20억**(20만 좌 — 관행 5~20만 좌의 상단), 총괴리 7.1bp ≤ 허용 15bp. 정밀도 병목은 **SK하이닉스 주가 176만원**(1CU 207주 → -6.9bp).
    - **총괴리는 현금을 목표 0인 포지션으로 세어 넣는다** (`DEFAULT_MAX_DEV_BP=15`). floor는 항상 미달 매수라 종목 편차가 전부 음수고 부족분이 통째로 현금에 쌓이므로, 현금을 빼면 지표가 실제 이탈의 **정확히 절반**이 된다. 그래서 옛 "10bp 허용치"는 실질 20bp였다 — 15bp는 완화가 아니라 강화다. 분해용 옛 값은 `stock_dev_bp`.
-   - **권장은 '충족'이 아니라 '강건'에서 고른다** (`cu_robustness`). 오늘 종가만 보면 7억도 통과하지만 가격 ±5% 교란 300회에서 67%가 허용치 초과 — 반올림 격자 운이다. 15억도 3.7% 남는다. 300회 전부 통과하는 최소가 20억. seed 고정이라 재현된다.
+   - **권장은 '충족'이 아니라 '강건'에서 고른다** (`cu_robustness`). 오늘 종가만 보면 7억도 통과하지만 가격 ±5% 교란 300회에서 70%가 허용치 초과 — 반올림 격자 운이다. 15억도 3%대가 남는다. 300회 전부 통과하는 최소가 20억. seed 고정이라 재현된다.
 4. ✅ **벤치마크 비교** (`benchmark.py` / `run_benchmark.py`) — 경쟁 ETF 실보유(KRX PDF, `.env` KRX_ID/PW 필요)에 판정 33종목 노출도 적용. 실측: **우리 순도 29.0% vs 국내 경쟁 11.8~22.3% = 1.3~2.5배** (국내주 HBM 상품은 사실상 유일 — PLUS 글로벌HBM은 해외형). 겹침 31~50%. ⚠ 표의 `1년 수익률` 열은 잣대가 다르다 — 자체는 오늘 확정 구성의 소급 재생(look-ahead), 경쟁사는 실제 거래 수익률. 순도·겹침만 동일 비교다.
 5. ✅ **분산요건** (`compliance.py` / `run_compliance.py`) — 최종 12종목으로 **R1(≥10종목) PASS · R2(≤30%) PASS**, 최대비중 21.57%가 20% 강화방침에만 WARN. (7종목이던 초기 구성은 R1 FAIL = 상장 불가였고, 그 해소 과정이 6·7번이다.) 해소 방안은 remediation_notes 참조.
 
 6. ✅ **종목수 10 시나리오** (`scenario_min10.py` / `run_scenario_min10.py`) — 팀 엔진(selection→weighting)을 임계값 컨텍스트로 재실행. **위성 임계 완화 단독은 무효**(공정·위원회 확인 통과가 현 7종목뿐 — 걸림돌은 실사 문서). 핵심 문턱 5%까지 내려야 12종목(순도 27.1%로 최저·규칙 정체성 훼손) vs **★S4 실사 확대(문턱 유지): 14종목 PASS·순도 28.8%** — 위성 상한 18%가 희석을 통제. S4여도 경쟁 ETF 순도(11.8~22.3%)보다 높아 "국내 1위" 유지.
 
-7. ✅ **실사 확정 + 최종 구성** (`run_final.py`) — 사용자 판정(2026-07-25): 편입 5(오로스는 TSV 문서 근거로 인정)·관찰 2(심텍·SFA — "전망은 편입 요건이 아님"). **최종 12종목**: R1 PASS · 순도 29.0% · 용량 1,994억(3.3배) · CU 7억(6.3bp). 확정 판정 CSV = `data/processed/판정완료_20260725_실사확정.csv`, 구성표 = `구성표_실사확정_20260725.csv`.
+7. ✅ **실사 확정 + 최종 구성** (`run_final.py`) — 사용자 판정(2026-07-25): 편입 5(오로스는 TSV 문서 근거로 인정)·관찰 2(심텍·SFA — "전망은 편입 요건이 아님"). **최종 12종목**: R1 PASS · 순도 29.0% · 용량 1,968억(3.2배) · CU 20억(7.1bp). 확정 판정 CSV = `data/processed/판정완료_20260725_실사확정.csv`, 구성표 = `구성표_실사확정_20260725.csv`.
 8. ✅ **설계서 PDF** (`make_pdf_etf.py`) — `docs/정가HBM_ETF_설계서.pdf` 7쪽 (팀 투자설명서 스타일 계승).
-9. ✅ **스트레스 테스트** (`stress_test.py` / `run_stress.py`) — 실측 MDD 구간(2026-06-18~07-24, -30.8% — 현재진행형 조정장)에서: 현금 1%가 상승장 +114bp 드래그 ↔ 하락장 **-424bp 방어**(부호 반전 실증), 하락 구간 리밸 비용 66bp로 증가. T2 유동성 가뭄: 용량은 ADV 정비례(×0.5 → 997억). **T2b 가정 민감도**(`stress_capacity_assumptions`): 참여율·청산일수는 관측이 아니라 우리가 고른 값이고 용량이 여기 정비례한다 — 10%·3일이면 1,994억 → **598억**(×0.30), ADV 반토막까지 겹치면 299억. T3 환매 내구성(ADV 반토막): AUM 1,000억이어도 일 20% 소화. 산출은 `stress_t1_tracking / t2_capacity / t2b_assumptions / t3_redemption.csv` 4개 (한 파일에 이어붙이면 헤더가 겹쳐 다시 못 읽는다).
+9. ✅ **스트레스 테스트** (`stress_test.py` / `run_stress.py`) — 실측 MDD 구간(2026-06-18~07-24, -30.8% — 현재진행형 조정장)에서: 현금 1%가 상승장 +113bp 드래그 ↔ 하락장 **-424bp 방어**(부호 반전 실증), 하락 구간 리밸 비용 66bp로 증가. T2 유동성 가뭄: 용량은 ADV 정비례(×0.5 → 984억). **T2b 가정 민감도**(`stress_capacity_assumptions`): 참여율·청산일수는 관측이 아니라 우리가 고른 값이고 용량이 여기 정비례한다 — 10%·3일이면 1,968억 → **591억**(×0.30), ADV 반토막까지 겹치면 295억. T3 환매 내구성(ADV 반토막): AUM 1,000억이어도 일 20% 소화. 산출은 `stress_t1_tracking / t2_capacity / t2b_assumptions / t3_redemption.csv` 4개 (한 파일에 이어붙이면 헤더가 겹쳐 다시 못 읽는다).
 
 **중요 — 이 프로젝트의 성격**: 팀 과제 제출용이 아니라 **사용자가 실제로 만들려는 자기 ETF**다. 모든 숫자는 험한 날 기준까지 검증하는 것을 원칙으로 한다(스트레스 테스트 상시화).
 
-**미해결 (2026-07-26 점검)** — CU 지표·강건성(3번)과 용량 가정 축(9번 T2b)은 해소됨.
-- 티이엠씨 HBM노출도 0.00인데 편입(위성 요건은 메모리향≥70%라 규칙상 적법). 노출도 ≤5% 5종목이 비중 17.7%, 그중 주성엔지니어링은 노출도 3%에 비중 13.4%(2위) — 심사에서 나올 질문.
+**미해결 (2026-07-27 전체 점검 기준)** — 사전 스크린 부재·비거래일 이벤트·결측 ffill·공휴일 처리는 해소됨.
+- 티이엠씨 HBM노출도 0.00인데 편입(위성 요건은 메모리향≥70%라 규칙상 적법). 노출도 ≤5% 5종목이 비중 17.7%, 그중 주성엔지니어링은 노출도 3%에 비중 13.4%(2위) — 심사에서 나올 질문. **방법론 개정 사안이라 손대지 않았다.**
 - 판정 CSV의 PER 0.00(넥스틴·오로스)은 산출불가를 0으로 인코딩한 것 — 선정 로직은 PER 미사용이라 계산엔 무해하나 표로 내보내면 오독.
-- `run_benchmark.last_trading_day_str()`는 주말만 넘기고 공휴일 미처리 → 휴일에 돌리면 조용히 NaN.
+- `benchmark_report.csv`는 **2026-07-26 스냅샷**이다. 07-27 재실행 때 KRX PDF가 어느 날짜로도 응답하지 않아(로그인 미성립) 갱신하지 못했다 — 나머지 산출물은 07-27 기준. KRX 복구되면 `run_benchmark.py` 재실행할 것.
 
 다음 후보: 하락장 실측 계속 추적(조정장 진행 중), S4→정기변경 규칙 문서화, 관찰종목(심텍·SFA) 공시 모니터링.
 
@@ -72,5 +80,7 @@ backtest/backtest.py — 이벤트 소비형 백테스트 (rebalance가 이벤�
 - 백테스트 가격 계약: **배당 미반영 수정주가**(PR). 공급처 수정주가가 TR 기준이면 결과가 부풀려짐 — backtest.py 도크스트링 참조.
 - 회전율의 유일한 공식 수치는 `bt["turnover"]` (목표비중 비교는 drift를 놓침).
 - `analysis/buffer_policy_sensitivity_v2.csv`: 버퍼 정책별 회전율·비용 드래그 비교 — wide(25%/65%)가 드래그 최소 6.7bp.
-- pykrx import 시 "KRX 로그인 실패" 경고는 무해 (KRX_ID/PW 환경변수 없을 때 뜸, 시세 조회는 동작).
+- pykrx import 시 "KRX 로그인 실패" 경고는 시세 조회엔 무해하지만 **ETF PDF 조회는 로그인이 필수**다 — 로그인이 안 붙으면 경쟁사 순도가 전멸한다. `run_benchmark`는 이때 리포트를 덮어쓰지 않고 예외로 멈춘다(직전 정상본 보존).
+- 영업일이라고 ETF 보유내역 PDF가 있는 건 아니다 — 당일분은 장중·마감 직후 미공시라 빈 응답이 온다. `resolve_pdf_date()`가 기준 ETF로 실제 조회해보고 하루씩 뒤로 물린다.
+- `fetch_adv`는 pykrx 거래대금이 실패하면 FDR 종가×거래량 근사로 폴백한다(경고 출력). 최근 실행은 계속 폴백 경로였으니 ADV는 근사값이다.
 - `PR_NOTE.md`·`완성본_안내.md`는 팀 인계 당시 기록 — 역사 자료로 보존.
