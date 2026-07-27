@@ -101,6 +101,13 @@ def fetch_adv(codes: list[str], lookback_days: int = 60,
 
     FDR 폴백은 종가×거래량 근사(일중 체결가 분포 무시) — 사용 시 로그로 고지.
     """
+    try:                      # 융합 데이터셋의 실측 거래대금 우선
+        from etf.hist_data import adv_offline
+        s_off = adv_offline(codes, lookback_days, end)
+        if s_off.notna().all():
+            return s_off
+    except Exception:
+        pass
     import datetime as dt
     end_d = pd.Timestamp(end or dt.date.today())
     start_d = end_d - pd.Timedelta(days=lookback_days * 2 + 10)

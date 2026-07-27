@@ -90,3 +90,53 @@ def build_index(start: str = "2014-01-02", end: str | None = None,
     turnover = (w - w.shift(1)).abs().sum(axis=1) / 2
     return pd.DataFrame({"level": level, "turnover": turnover,
                          "n_stocks": (w > 0).sum(axis=1), "reason": ""})
+
+
+def prices_offline(codes: list[str], start: str | None = None,
+                   end: str | None = None) -> pd.DataFrame:
+    """수정종가 Date × Code. `run_tracking.fetch_prices`와 같은 형태.
+
+    fail-closed 원칙에 따라 중간 결측을 보간하지 않는다 — 엔진이 잡게 둔다.
+    """
+    df = load_field("Close", codes)
+    if start:
+        df = df.loc[start:]
+    if end:
+        df = df.loc[:end]
+    return df.dropna(how="all")
+
+
+def adv_offline(codes: list[str], lookback_days: int = 60,
+                end: str | None = None) -> pd.Series:
+    """최근 N거래일 일평균 **실측 거래대금**(원).
+
+    ⚠️ FnGuide 구간의 거래대금은 시간외·블록딜을 포함하는 것으로 보여 대형주에서
+    정규장 대비 1.7~2.0배 크다(`D:\data\_live\volume_scale.csv`). 용량을
+    보수적으로 재려면 `conservative_adv()`를 쓸 것.
+    """
+    df = load_field("Value", codes)
+    if end:
+        df = df.loc[:end]
+    return df.tail(lookback_days).mean().rename("ADV")
+
+
+def volume_scale() -> pd.Series:
+    """종목별 거래량 정의 배율(FnGuide/pykrx). 없으면 빈 Series."""
+    p = DERIVED.parent / "_live" / "volume_scale.csv"
+    if not p.exists():
+        return pd.Series(dtype=float)
+    s = pd.read_csv(p, index_col=0, encoding="utf-8-sig").iloc[:, 0]
+    s.index = s.index.astype(str).str.zfill(6)
+    return s
+
+
+def conservative_adv(codes: list[str], lookback_days: int = 60,
+                     end: str | None = None) -> pd.Series:
+    """정규장 기준 거래대금 추정 = 실측 ÷ 배율.
+
+    시간외·블록딜은 원할 때 원하는 만큼 체결되지 않는다. 용량(며칠 만에 청산
+    가능한가)을 재는 목적이면 정규장만 세는 편이 정직하다.
+    """
+    adv = adv_offline(codes, lookback_days, end)
+    sc = volume_scale().reindex(adv.index).fillna(1.0).clip(lower=1.0)
+    return (adv / sc).rename("ADV_regular")

@@ -63,6 +63,18 @@ def source_line(c: pd.DataFrame) -> str:
 
 
 def fetch_prices(codes: list[str], start: str, end: str) -> pd.DataFrame:
+    """수정종가. 융합 데이터셋이 있으면 그것을 쓰고, 없으면 FDR로 조회한다.
+
+    오프라인을 우선하는 이유는 속도가 아니라 **일관성**이다. 종목마다 다른 시점에
+    네트워크로 받아오면 실행할 때마다 결과가 미묘하게 달라진다.
+    """
+    try:
+        from etf.hist_data import prices_offline
+        df = prices_offline(codes, start, end)
+        if len(df) and df.shape[1] == len(codes):
+            return df
+    except Exception:
+        pass
     import FinanceDataReader as fdr
     px = {}
     for code in codes:
