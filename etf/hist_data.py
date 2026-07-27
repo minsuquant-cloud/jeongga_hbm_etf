@@ -73,23 +73,49 @@ def pit_weights(close: pd.DataFrame, target: pd.Series) -> pd.DataFrame:
 
 def build_index(start: str = "2014-01-02", end: str | None = None,
                 base: float = 1000.0) -> pd.DataFrame:
-    """PIT 재정규화 지수 + 회전율.
+    """PIT 재정규화 지수 + 회전율. **분기 재고정** 기준.
 
-    반환: level(지수), turnover(비중 변화 절반), n_stocks(당시 편입 수)
+    비중을 매일 목표로 되돌리면(연속 리밸런싱) 실제로는 매일 매매가 일어나는데,
+    `|w_t - w_{t-1}|`로 회전율을 재면 목표가 상수라 0이 나온다. 비중 유지에 드는
+    매매를 통째로 빠뜨리는 것이다 — 초기 구현이 그랬고, 매매비용이 17bp에서
+    0.2bp로 줄어든 것처럼 보였다.
+
+    그래서 실제 운용대로 **구간 중에는 비중이 가격에 따라 표류하게 두고,
+    분기 말에만 목표로 되돌린다.** 회전율은 그 되돌림에서 나오는 매매만 센다.
+
+    반환: level(지수), turnover(편도 = 교체비율), n_stocks(당시 편입 수)
     """
     target = load_composition()
     close = load_field("Close", target.index.tolist())
     close = close.loc[start:end] if end else close.loc[start:]
 
-    w = pit_weights(close, target)
+    tgt = pit_weights(close, target)          # 시점별 목표(살아있는 종목만)
     ret = close.pct_change().fillna(0.0)
-    # 당일 수익률은 전일 비중으로 얻는다 — 당일 비중을 쓰면 미래를 쓰는 셈이다.
-    port_ret = (w.shift(1).fillna(0.0) * ret).sum(axis=1)
+    resets = set(close.groupby([close.index.year, close.index.quarter])
+                      .apply(lambda g: g.index.max()).tolist())
 
-    level = base * (1 + port_ret).cumprod()
-    turnover = (w - w.shift(1)).abs().sum(axis=1) / 2
-    return pd.DataFrame({"level": level, "turnover": turnover,
-                         "n_stocks": (w > 0).sum(axis=1), "reason": ""})
+    w = tgt.iloc[0].copy()
+    levels, tnos, ns = [], [], []
+    lvl = base
+    for i, d in enumerate(close.index):
+        if i > 0:
+            grown = w * (1 + ret.loc[d].fillna(0.0))
+            tot = float(grown.sum())
+            if tot > 0:
+                lvl *= tot
+                w = grown / tot                # 표류한 비중
+        tno = 0.0
+        if i == 0 or d in resets:
+            new = tgt.loc[d]
+            if float(new.sum()) > 0:
+                tno = float((new - w).abs().sum()) / 2
+                w = new.copy()
+        levels.append(lvl)
+        tnos.append(tno)
+        ns.append(int((w > 0).sum()))
+
+    return pd.DataFrame({"level": levels, "turnover": tnos, "n_stocks": ns,
+                         "reason": ""}, index=close.index)
 
 
 def prices_offline(codes: list[str], start: str | None = None,
