@@ -225,7 +225,12 @@ def select_from_selection(df_kr: pd.DataFrame, prev_members: set,
     반환: `군` 확정된 편입 구성표(미편입 제외, 코드 오름차순 - 결정론).
     """
     d = df_kr.copy()
-    d["코드"] = d["코드"].astype(str).str.zfill(6)
+    # 숫자 코드만 zfill — 해외 티커('MU')를 '0000MU'로 만들면 기존 종목 대조가
+    # 어긋나 버퍼가 무력화된다 (2026-07-29 글로벌 정본 전환에 따른 최소 수정.
+    # src/hbm_evidence.py의 동일 수정과 같은 사고 클래스 — normalize_code 규약).
+    d["코드"] = d["코드"].map(
+        lambda c: str(c).strip().upper().zfill(6)
+        if str(c).strip().isdigit() else str(c).strip().upper())
     is_inc = d["코드"].isin(prev_members)
     entry = d.apply(lambda r: selection_hold_group(
         r, cfg.entry_core, cfg.entry_sat), axis=1)
