@@ -67,13 +67,14 @@ def pit_weights(close: pd.DataFrame, target: pd.Series) -> pd.DataFrame:
     """
     alive = close.notna()
     w = alive.astype(float).mul(target.reindex(close.columns).fillna(0.0), axis=1)
-    total = w.sum(axis=1).replace(0.0, pd.NA)
+    # pd.NA는 object dtype으로 승격돼 fillna에서 downcasting 경고를 낸다 — float NaN 사용
+    total = w.sum(axis=1).replace(0.0, float("nan"))
     return w.div(total, axis=0).fillna(0.0)
 
 
-def build_index(start: str = "2014-01-02", end: str | None = None,
-                base: float = 1000.0) -> pd.DataFrame:
-    """PIT 재정규화 지수 + 회전율. **분기 재고정** 기준.
+def simulate_reset_index(close: pd.DataFrame, target: pd.Series,
+                         base: float = 1000.0) -> pd.DataFrame:
+    """분기 재고정 지수 코어 — 데이터 로드가 없는 순수 함수(오프라인 테스트 대상).
 
     비중을 매일 목표로 되돌리면(연속 리밸런싱) 실제로는 매일 매매가 일어나는데,
     `|w_t - w_{t-1}|`로 회전율을 재면 목표가 상수라 0이 나온다. 비중 유지에 드는
@@ -83,14 +84,18 @@ def build_index(start: str = "2014-01-02", end: str | None = None,
     그래서 실제 운용대로 **구간 중에는 비중이 가격에 따라 표류하게 두고,
     분기 말에만 목표로 되돌린다.** 회전율은 그 되돌림에서 나오는 매매만 센다.
 
+    target은 합이 1이 아니어도 내부에서 정규화한다(동일가중 반사실 등
+    임의 비중을 그대로 넘길 수 있게).
+
     반환: level(지수), turnover(편도 = 교체비율), n_stocks(당시 편입 수)
     """
-    target = load_composition()
-    close = load_field("Close", target.index.tolist())
-    close = close.loc[start:end] if end else close.loc[start:]
-
+    target = target / target.sum()
     tgt = pit_weights(close, target)          # 시점별 목표(살아있는 종목만)
-    ret = close.pct_change().fillna(0.0)
+    # 결측 구간은 최종가 유지(carry)와 동치가 되도록 명시적 ffill 후 수익률 산출
+    # (pct_change 기본 pad와 같은 동작 — pandas 기본값 제거 예고에 따라 명시).
+    # 상장폐지 후에는 0% 수익률로 얼어붙지만, 다음 분기 재고정에서 tgt가 그
+    # 종목을 0으로 되돌리므로 지수에 기여하지 않는다. 상장 전 구간은 비중 0.
+    ret = close.ffill().pct_change(fill_method=None).fillna(0.0)
     resets = set(close.groupby([close.index.year, close.index.quarter])
                       .apply(lambda g: g.index.max()).tolist())
 
@@ -116,6 +121,19 @@ def build_index(start: str = "2014-01-02", end: str | None = None,
 
     return pd.DataFrame({"level": levels, "turnover": tnos, "n_stocks": ns,
                          "reason": ""}, index=close.index)
+
+
+def build_index(start: str = "2014-01-02", end: str | None = None,
+                base: float = 1000.0,
+                target: pd.Series | None = None) -> pd.DataFrame:
+    """PIT 재정규화 지수 + 회전율 (로더 + simulate_reset_index).
+
+    target을 주면 그 비중으로(예: 동일가중 반사실), 없으면 확정 구성표로 잰다.
+    """
+    tgt = load_composition() if target is None else target
+    close = load_field("Close", tgt.index.tolist())
+    close = close.loc[start:end] if end else close.loc[start:]
+    return simulate_reset_index(close, tgt, base=base)
 
 
 def prices_offline(codes: list[str], start: str | None = None,
