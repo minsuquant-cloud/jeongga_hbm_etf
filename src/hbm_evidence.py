@@ -381,7 +381,23 @@ def main():
     else:
         df = pd.DataFrame({"코드": ["005930", "000660", "042700"]})
         print("※ 입력이 없어 데모 3종목으로 실행합니다.\n")
-    df["코드"] = df["코드"].astype(str).str.zfill(6)
+    # 코드 정규화는 etf.global_candidates.normalize_code로 통일 —
+    # 무조건 zfill(6)을 하면 'MU' → '0000MU'가 되어 DART를 조용히 헛조회한다.
+    import sys
+    _root = str(Path(__file__).resolve().parent.parent)
+    if _root not in sys.path:
+        sys.path.insert(0, _root)
+    from etf.global_candidates import normalize_code
+    df["코드"] = df["코드"].map(normalize_code)
+    foreign = df[~df["코드"].str.isdigit()]
+    if len(foreign):
+        print("※ 해외 티커는 이 도구(DART 전용)로 조회할 수 없습니다 — "
+              "etf/global_evidence.py 를 쓰세요. 건너뜀: "
+              + ", ".join(foreign["코드"]))
+        df = df[df["코드"].str.isdigit()].reset_index(drop=True)
+    if len(df) == 0:
+        print("조회할 국내 종목이 없습니다. 중단합니다.")
+        return
 
     key = os.environ.get("DART_API_KEY")
     if not key or key.startswith("여기에"):

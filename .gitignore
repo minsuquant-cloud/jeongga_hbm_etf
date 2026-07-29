@@ -11,3 +11,7 @@ data/raw/*.csv
 evidence/
 
 notebooks/00_concept_check.ipynb
+
+# EDGAR 원문 캐시·해외 판정 카드 자동 생성물(global_evidence.py) — 커밋하지 않는다
+docs_cache/edgar/
+etf/evidence_global/
