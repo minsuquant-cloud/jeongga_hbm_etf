@@ -32,32 +32,92 @@ DERIVED = Path(os.environ.get(
     "QUANT_DATA_DERIVED",
     _LIVE if (_LIVE / "price_adj_close.parquet").exists() else _SNAP))
 BASE = Path(__file__).resolve().parent.parent
-FINAL = BASE / "data" / "processed" / "구성표_실사확정_20260725.csv"
+# 2026-07-29 글로벌 단일 정본 전환 — 국내/글로벌 두 판을 두지 않는다(HBM 지수는
+# 하나다). 12종목 구성표(구성표_실사확정_20260725.csv)는 역사 기록으로 보존.
+FINAL = BASE / "data" / "processed" / "구성표_글로벌확정_20260729.csv"
 
 FIELDS = {"Open": "price_adj_open", "High": "price_adj_high",
           "Low": "price_adj_low", "Close": "price_adj_close",
           "Volume": "price_volume", "Value": "price_value_traded"}
 
 
+def _norm(code) -> str:
+    """숫자 코드만 zfill — 'MU'.zfill(6)='0000MU' 사고 방지 (normalize_code 동일)."""
+    c = str(code).strip().upper()
+    return c.zfill(6) if c.isdigit() else c
+
+
 def load_composition() -> pd.Series:
     """확정 구성표 → 코드별 목표비중(합 1)."""
     c = pd.read_csv(FINAL, encoding="utf-8-sig")
-    c["코드"] = c["코드"].astype(str).str.zfill(6)
+    c["코드"] = c["코드"].map(_norm)
     w = pd.Series((c["편입비중(%)"] / 100.0).values, index=c["코드"].tolist())
     return w / w.sum()
 
 
 def load_names() -> pd.Series:
     c = pd.read_csv(FINAL, encoding="utf-8-sig")
-    c["코드"] = c["코드"].astype(str).str.zfill(6)
+    c["코드"] = c["코드"].map(_norm)
     return c.set_index("코드")["종목명"]
 
 
+# ── 해외 티커 KRW 환산 레이어 ────────────────────────────────────────────
+# 융합 데이터셋(D:\data)은 국내 전용이다. 해외 편입 종목(현재 MU)은 FDR
+# 현지통화 시세 × 환율(FDR, 일별 종가)로 KRW 환산해 같은 형태로 합친다.
+# 등록부(global_candidates)의 통화를 쓰므로, 등록부에 없는 해외 티커는
+# fail-closed로 예외 — 조용히 빠지면 지수가 국내판으로 퇴행한다.
+_FOREIGN_CACHE: dict = {}
+
+
+def _foreign_currency(ticker: str) -> str:
+    from etf.global_candidates import registry
+    reg = dict(zip(registry()["코드"], registry()["통화"]))
+    if ticker not in reg:
+        raise ValueError(f"해외 티커 {ticker}의 통화를 모른다 — "
+                         "global_candidates.CANDIDATES에 등록할 것 (fail-closed)")
+    return reg[ticker]
+
+
+def foreign_ohlcv_krw(ticker: str) -> pd.DataFrame:
+    """해외 티커의 OHLCV+Value를 KRW 환산으로 (2014~, FDR).
+
+    ⚠ 가격 계약: FDR 미국 시세의 배당·분할 반영 방식은 국내 수정주가(PR)와
+    계약이 검증되지 않았다 — CLAUDE.md '알아둘 것' 참조. Volume은 주 수 그대로,
+    Value = Close(KRW) × Volume.
+    """
+    if ticker in _FOREIGN_CACHE:
+        return _FOREIGN_CACHE[ticker]
+    import FinanceDataReader as fdr
+    cur = _foreign_currency(ticker)
+    px = fdr.DataReader(ticker, "2014-01-01")
+    fx = fdr.DataReader(f"{cur}/KRW", "2014-01-01")["Close"].dropna()
+    fx = fx.reindex(px.index).ffill()
+    out = pd.DataFrame(index=px.index)
+    for f in ("Open", "High", "Low", "Close"):
+        out[f] = pd.to_numeric(px[f], errors="coerce") * fx
+    out["Volume"] = pd.to_numeric(px["Volume"], errors="coerce")
+    out["Value"] = out["Close"] * out["Volume"]
+    _FOREIGN_CACHE[ticker] = out
+    return out
+
+
 def load_field(field: str, codes: list[str]) -> pd.DataFrame:
-    """Date × Code 와이드 시세. field는 FIELDS의 키."""
+    """Date × Code 와이드 시세. field는 FIELDS의 키.
+
+    국내(숫자 코드)는 융합 parquet, 해외는 KRW 환산(FDR)을 한국 거래일
+    달력에 정렬(ffill)해 합친다. 해외 거래소 휴일의 결측은 직전가 유지 —
+    상장 전 구간은 NaN 그대로(pit_weights가 비중 0 처리).
+    """
     df = pd.read_parquet(DERIVED / f"{FIELDS[field]}.parquet")
-    have = [c for c in codes if c in df.columns]
-    return df[have].astype("float64")
+    kr = [c for c in codes if str(c).isdigit()]
+    fr = [c for c in codes if not str(c).isdigit()]
+    have = [c for c in kr if c in df.columns]
+    out = df[have].astype("float64")
+    for t in fr:
+        s = foreign_ohlcv_krw(t)[field]
+        # reindex 후 ffill — 선행 NaN(상장 전)은 ffill이 채우지 않으므로 그대로 남는다
+        out[t] = s.reindex(out.index).ffill().astype("float64")
+    return out
 
 
 def pit_weights(close: pd.DataFrame, target: pd.Series) -> pd.DataFrame:

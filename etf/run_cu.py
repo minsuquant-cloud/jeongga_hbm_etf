@@ -29,12 +29,18 @@ OUT_DIR = os.path.join(BASE, "etf", "output")
 
 
 def fetch_last_prices(codes: list[str]) -> pd.Series:
+    """최신 종가(원). 해외 티커는 KRW 환산 레이어(hist_data)로 — 현지통화가
+    KRW 격자에 섞이면 CU 계산 전체가 무의미해진다."""
     import FinanceDataReader as fdr
+    from etf.hist_data import foreign_ohlcv_krw
     end = dt.date.today()
     start = end - dt.timedelta(days=14)
     px = {}
     for code in codes:
-        s = fdr.DataReader(code, start, end)["Close"].dropna()
+        if not str(code).isdigit():
+            s = foreign_ohlcv_krw(code)["Close"].dropna()
+        else:
+            s = fdr.DataReader(code, start, end)["Close"].dropna()
         if len(s) == 0:
             raise RuntimeError(f"가격 조회 실패: {code}")
         px[code] = float(s.iloc[-1])

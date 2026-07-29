@@ -48,7 +48,18 @@ def main():
 
     print(f"{source_line(c)}")
     print(f"ADV 수집: 최근 {args.lookback}거래일 (기준일 {dt.date.today()})")
-    adv = fetch_adv(codes, lookback_days=args.lookback)
+    # 정규장 기준(conservative_adv)이 설계 기준 — 시간외·블록딜 부풀림 제거
+    # (CLAUDE.md '용량은 정규장 기준으로 본다'). 해외 티커도 KRW 환산으로 포함.
+    # 융합 데이터셋이 없는 환경에서만 실측(fetch_adv, 국내 전용)으로 폴백.
+    try:
+        from etf.hist_data import conservative_adv
+        adv = conservative_adv(codes, lookback_days=args.lookback)
+    except Exception as e:
+        foreign = [x for x in codes if not str(x).isdigit()]
+        if foreign:
+            raise RuntimeError(f"정규장 ADV 산출 실패({e}) + 해외 티커 {foreign} — "
+                               "fetch_adv 폴백은 통화 환산이 없어 진행 불가")
+        adv = fetch_adv(codes, lookback_days=args.lookback)
 
     summary, per_stock = max_aum(weights, adv,
                                  participation=args.participation,

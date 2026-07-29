@@ -37,7 +37,9 @@ from etf.nav_sim import scenario_grid, simulate_etf_nav, tracking_report  # noqa
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROC = os.path.join(BASE, "data", "processed")
-CONSTITUENTS = os.path.join(PROC, "구성표_실사확정_20260725.csv")   # 최종 12종목
+# 2026-07-29 글로벌 단일 정본 전환 — 13종목(앵커 3사 + 국내 비앵커 10).
+# HBM 지수는 하나다: 국내/글로벌 두 판을 두지 않는다. 12종목 구성표는 역사 보존.
+CONSTITUENTS = os.path.join(PROC, "구성표_글로벌확정_20260729.csv")
 OUT_DIR = os.path.join(BASE, "etf", "output")
 
 
@@ -49,7 +51,8 @@ def load_constituents(path: str | None = None) -> pd.DataFrame:
     """
     src = path or CONSTITUENTS
     c = pd.read_csv(src, encoding="utf-8-sig")
-    c["코드"] = c["코드"].astype(str).str.zfill(6)     # 5930 → 005930
+    from etf.global_candidates import normalize_code
+    c["코드"] = c["코드"].map(normalize_code)          # 5930→005930, MU는 그대로
     w = c["편입비중(%)"].astype(float)
     if abs(w.sum() - 100.0) > 0.5:
         raise ValueError(f"구성표 비중 합 {w.sum():.2f}% ≠ 100% — 파일 확인 필요")
@@ -75,6 +78,14 @@ def fetch_prices(codes: list[str], start: str, end: str) -> pd.DataFrame:
             return df
     except Exception:
         pass
+    # FDR 폴백은 국내 전용 — 해외 티커를 여기로 태우면 현지통화(USD 등)가
+    # KRW 패널에 섞이는 조용한 통화 사고가 난다. hist_data의 환산 레이어가
+    # 정상 경로이므로, 폴백에 해외가 오면 즉시 실패시킨다(fail-closed).
+    foreign = [c for c in codes if not str(c).isdigit()]
+    if foreign:
+        raise RuntimeError(
+            f"오프라인 데이터셋 실패 + 해외 티커 {foreign} — FDR 폴백은 "
+            "통화 환산이 없어 진행 불가. D:\\data 융합 데이터셋을 확인할 것")
     import FinanceDataReader as fdr
     px = {}
     for code in codes:
