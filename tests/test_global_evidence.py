@@ -116,6 +116,61 @@ non_sec = set(reg["코드"]) - set(sec["코드"])
 check("비SEC = BESI.AS·0522.HK·6857.T·4004.T (다음 단계)",
       non_sec == {"BESI.AS", "0522.HK", "6857.T", "4004.T"}, non_sec)
 
+# ═══════════════════════════════════════════════════════════════════════
+# 해외 KRW 환산 레이어 (2026-07-29 리뷰 반영 — 정본 전환의 위험 지점들)
+# 네트워크 없이 순수 함수만 검증한다.
+# ═══════════════════════════════════════════════════════════════════════
+import pandas as pd
+from etf.hist_data import _norm, align_foreign
+from etf.global_evidence import _user_agent
+
+# ── 9) _norm — 정본 로더의 코드 정규화 (0000MU 사고 재발 방지) ─────────
+check("_norm('MU') == 'MU'", _norm("MU") == "MU", _norm("MU"))
+check("_norm('5930') == '005930'", _norm("5930") == "005930")
+
+# ── 10) align_foreign — T-1 시프트 (룩어헤드 제거) ─────────────────────
+kr_cal = pd.to_datetime(["2026-07-20", "2026-07-21", "2026-07-22",
+                         "2026-07-23", "2026-07-24"])
+us = pd.Series([100.0, 110.0, 120.0],
+               index=pd.to_datetime(["2026-07-20", "2026-07-21", "2026-07-23"]))
+a = align_foreign(us, kr_cal)
+check("T-1: 한국 7/21에는 미국 7/20 종가", a.loc["2026-07-21"] == 100.0, a.tolist())
+check("T-1: 해외 휴일(7/22) 다음날은 직전가 유지+시프트",
+      a.loc["2026-07-23"] == 110.0, a.tolist())
+check("T-1: 첫날은 NaN (관측 가능한 이전 종가 없음)",
+      pd.isna(a.loc["2026-07-20"]))
+check("T-1: 마지막날 = 미국 7/23 종가", a.loc["2026-07-24"] == 120.0)
+pre = pd.Series([50.0], index=pd.to_datetime(["2026-07-23"]))   # 7/23 상장
+b = align_foreign(pre, kr_cal)
+check("상장 전 구간은 NaN 유지 (소급 편입 금지)",
+      b.loc[:"2026-07-23"].isna().all() and b.loc["2026-07-24"] == 50.0, b.tolist())
+
+# ── 11) fetch_prices 해외 가드 — 오프라인 실패 시 USD 혼입 대신 예외 ───
+import etf.hist_data as hd
+import etf.run_tracking as rt
+_orig = hd.prices_offline
+hd.prices_offline = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("모의 실패"))
+try:
+    rt.fetch_prices(["005930", "MU"], "2026-01-01", "2026-07-29")
+    check("오프라인 실패+해외 → 예외 (통화 혼입 차단)", False, "예외가 나지 않음")
+except RuntimeError as e:
+    check("오프라인 실패+해외 → 예외 (통화 혼입 차단)", "MU" in str(e), str(e)[:80])
+finally:
+    hd.prices_offline = _orig
+
+# ── 12) EDGAR UA — 이메일 하드코딩 금지, 미설정이면 즉시 실패 ──────────
+import os as _os
+_saved = _os.environ.pop("EDGAR_CONTACT_EMAIL", None)
+try:
+    _user_agent()
+    check("EDGAR_CONTACT_EMAIL 미설정 → 예외", False, "예외가 나지 않음")
+except RuntimeError:
+    check("EDGAR_CONTACT_EMAIL 미설정 → 예외", True)
+_os.environ["EDGAR_CONTACT_EMAIL"] = "test@example.com"
+check("설정 시 UA에 이메일 포함", "test@example.com" in _user_agent())
+if _saved is not None:
+    _os.environ["EDGAR_CONTACT_EMAIL"] = _saved
+
 print()
 print("전체:", "PASS" if ok else "FAIL")
 sys.exit(0 if ok else 1)

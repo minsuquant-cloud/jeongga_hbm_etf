@@ -41,7 +41,8 @@ backtest/backtest.py — 이벤트 소비형 백테스트 (rebalance가 이벤�
 ```
 
 - **현재 구성: 글로벌 13종목 단일 정본** (앵커 40 / 핵심 42 / 위성 18 — 앵커는 삼성 14.54·MU 13.04·하이닉스 12.42). `data/processed/구성표_글로벌확정_20260729.csv`. **국내/글로벌 두 판을 두지 않는다** — HBM 지수는 하나다(2026-07-29 사용자 결정). 12종목 `구성표_실사확정_20260725.csv`와 7종목 `구성표_실데이터_20260723.csv`는 역사 기록 — 기본값으로 쓰지 말 것.
-- **해외 티커(MU) 시세는 `hist_data`의 KRW 환산 레이어**(`foreign_ohlcv_krw` — FDR 현지통화 × 환율, 한국 달력 정렬)를 지나야 한다. FDR 직접 조회를 KRW 패널에 섞으면 통화 사고 — run_tracking/run_cu/run_capacity의 폴백은 해외 티커가 오면 일부러 실패한다(fail-closed). 코드 정규화는 `normalize_code`(무조건 zfill 금지).
+- **해외 티커(MU) 시세는 `hist_data`의 KRW 환산 레이어**(`foreign_ohlcv_krw` — FDR 현지통화 × 환율)를 지나야 한다. 달력 정렬은 `align_foreign`이 **T-1 시프트**로 한다 — 미국 T 종가는 한국 T 마감보다 14시간 뒤에 나오므로 같은 날짜끼리 붙이면 룩어헤드다(2026-07-29 리뷰에서 잡음). FDR 직접 조회를 KRW 패널에 섞으면 통화 사고 — run_tracking/run_cu/run_capacity의 폴백은 해외 티커가 오면 일부러 실패한다(fail-closed). 코드 정규화는 `normalize_code`(무조건 zfill 금지).
+- **산출 러너는 장 마감 후에 돌린다.** 2026-07-29 폭락장 장중 실행에서 같은 날짜 라벨에 소스별 가격이 12% 어긋났다(parquet 하이닉스 1,552,000 vs FDR 장중 1,374,000) — "같은 날 재실행으로 날짜 통일" 관행은 EOD 가격을 전제한다. 장중에 돌린 수치는 방향만 믿고 소수점은 마감 후 재확정할 것.
 - `src/universe.py`는 팀 스냅샷에서 **빈 파일**이었다(2026-07-27 확인). selection.py가 "사전 스크린은 내 책임 아님"이라며 지목하는데 집행 코드가 없어서, 관리종목·자본잠식·의견거절 종목이 그대로 18% 비중으로 편입됐다. methodology.md 1장 표 그대로 구현해 채웠고 `scenario_min10.run_scenario()`가 호출한다 — selection.py·weighting.py는 무수정.
 - `src/index_calc.py`는 이 레포에서 **아무도 import하지 않는다**(팀 하류 모듈 스냅샷). ETF 레이어의 지수 재생 경로는 `backtest.simulate_index`다.
 - 방법론 근거 문서: `docs/methodology.md`, 제출 PDF들은 `docs/제출문서/`

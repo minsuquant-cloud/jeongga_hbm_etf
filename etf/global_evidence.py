@@ -40,12 +40,33 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from etf.global_candidates import registry, normalize_code  # noqa: E402
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__))), ".env"))
+except Exception:
+    pass
+
 BASE = Path(__file__).resolve().parent.parent
 OUTDIR = BASE / "etf" / "evidence_global"
 CACHE = BASE / "docs_cache" / "edgar"
 
-# SEC 규정: 자동화 접근은 연락처가 든 User-Agent 필수. 없으면 403이 온다.
-USER_AGENT = "jeongga-hbm-etf estcamp.ai.22@gmail.com"
+
+def _user_agent() -> str:
+    """SEC 규정: 자동화 접근은 실제 연락처가 든 User-Agent 필수(없으면 403).
+
+    이메일은 코드에 박지 않고 .env(EDGAR_CONTACT_EMAIL)에서 읽는다 —
+    공개 레포에 개인 이메일이 실리는 것과 오타 하드코딩(.22 오기 사고)을
+    동시에 막는다. 미설정이면 조용히 익명 접근하지 않고 즉시 실패한다.
+    """
+    email = os.environ.get("EDGAR_CONTACT_EMAIL", "").strip()
+    if not email or "@" not in email:
+        raise RuntimeError(
+            "EDGAR_CONTACT_EMAIL이 .env에 없습니다 — SEC는 연락처 든 "
+            "User-Agent를 요구합니다. .env에 EDGAR_CONTACT_EMAIL=<이메일> 추가")
+    return f"jeongga-hbm-etf {email}"
+
+
 SLEEP_SEC = 0.15          # 초당 10회 미만 권고 준수
 
 # 이번 단계에서 지원하는 거래소 (SEC 제출사)
@@ -220,7 +241,7 @@ def _get(url: str, cache_name: str | None = None, refresh: bool = False,
             return fp.read_text(encoding="utf-8", errors="replace")
     import requests
     time.sleep(SLEEP_SEC)
-    r = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=30)
+    r = requests.get(url, headers={"User-Agent": _user_agent()}, timeout=30)
     r.raise_for_status()
     body = r.text
     if cache_name:
@@ -265,28 +286,30 @@ def fetch_equity(cik: int) -> tuple[float, str, str] | str:
     return "XBRL 자본총계 조회 실패 — 보고서 재무제표에서 직접 확인"
 
 
-def krw_block(ticker: str, exchange: str) -> list[str]:
+def krw_block(ticker: str, exchange: str, currency: str = "USD") -> list[str]:
     """KRW 환산 도움 블록 — 시총·거래대금 **제안값** (판정은 사용자).
 
     실사 CSV 단위 계약: 억 원(KRW 환산) + 환산기준일 기록.
-    실패는 사유를 그대로 적는다 — 조용히 생략하면 빈 블록이 '해당 없음'으로
-    오독된다.
+    통화는 등록부 값을 받는다 — USD 하드코딩이면 EDINET 확장 때 엔화 가격에
+    'USD'가 붙는 잠복 버그. 실패는 사유를 그대로 적는다 — 조용히 생략하면
+    빈 블록이 '해당 없음'으로 오독된다.
     """
     lines = ["**KRW 환산 도움 (제안값 — 사용자 확인 후 기입)**", ""]
     try:
         import FinanceDataReader as fdr
         px = fdr.DataReader(ticker, "2026-01-01")
-        fx = fdr.DataReader("USD/KRW", "2026-01-01")["Close"].dropna()
+        fx = fdr.DataReader(f"{currency}/KRW", "2026-01-01")["Close"].dropna()
         close = float(px["Close"].dropna().iloc[-1])
         rate = float(fx.iloc[-1])
         asof_px = str(px.index[-1].date())
         asof_fx = str(fx.index[-1].date())
         # 60거래일 평균 거래대금 (종가×거래량 근사 — fetch_adv 폴백과 같은 급)
         tail = px.dropna(subset=["Close", "Volume"]).tail(60)
-        adv_usd = float((tail["Close"] * tail["Volume"]).mean())
-        adv_eok = adv_usd * rate / 1e8
+        adv_ccy = float((tail["Close"] * tail["Volume"]).mean())
+        adv_eok = adv_ccy * rate / 1e8
         lines += [
-            f"- 종가 {close:,.2f} USD ({asof_px}) × 환율 {rate:,.1f} KRW/USD ({asof_fx})",
+            f"- 종가 {close:,.2f} {currency} ({asof_px}) × "
+            f"환율 {rate:,.1f} KRW/{currency} ({asof_fx})",
             f"- 60거래일 평균 거래대금 ≈ **{adv_eok:,.0f}억 원** "
             "(종가×거래량 근사 — 실사 CSV '거래대금' 제안값)",
             f"- 시가총액 = 종가 × 발행주식수 × 환율 ÷ 1e8 (억 원) — "
@@ -371,7 +394,7 @@ def build_card(cand: dict, refresh: bool = False) -> dict:
           "- 관리종목: SEC 상장사는 국내 '관리종목' 개념이 없다 — 상장폐지 심사·"
           "거래정지 중이 아니면 False (거래소 공지 확인)",
           ""]
-    md += krw_block(ticker, cand.get("거래소", ""))
+    md += krw_block(ticker, cand.get("거래소", ""), cand.get("통화", "USD"))
     md += ["",
            "---",
            "",

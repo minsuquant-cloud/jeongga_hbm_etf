@@ -101,12 +101,25 @@ def foreign_ohlcv_krw(ticker: str) -> pd.DataFrame:
     return out
 
 
+def align_foreign(s: pd.Series, index: pd.Index) -> pd.Series:
+    """해외 시계열을 한국 거래일 달력에 **룩어헤드 없이** 정렬하는 순수 함수.
+
+    미국 날짜 T의 종가는 한국 T 마감(15:30 KST)보다 약 14시간 **뒤에** 나온다.
+    같은 날짜끼리 붙이면 한국 T 지수가 미래 가격을 쓰는 셈 — 정가의 제1원칙
+    (룩어헤드 차단) 위반. 그래서 한국 날짜 T에는 "그 시점에 관측 가능한 최근
+    해외 종가" = 전 거래일 값을 쓴다(reindex→ffill→shift(1)).
+
+    · 해외 휴일: ffill로 직전가 유지 후 시프트 — 이중 지연 없음
+    · 상장 전: 선행 NaN은 ffill이 채우지 않아 그대로 (pit_weights가 비중 0)
+    """
+    return s.reindex(index).ffill().shift(1).astype("float64")
+
+
 def load_field(field: str, codes: list[str]) -> pd.DataFrame:
     """Date × Code 와이드 시세. field는 FIELDS의 키.
 
-    국내(숫자 코드)는 융합 parquet, 해외는 KRW 환산(FDR)을 한국 거래일
-    달력에 정렬(ffill)해 합친다. 해외 거래소 휴일의 결측은 직전가 유지 —
-    상장 전 구간은 NaN 그대로(pit_weights가 비중 0 처리).
+    국내(숫자 코드)는 융합 parquet, 해외는 KRW 환산(FDR)을 align_foreign으로
+    합친다 — 해외 값은 T-1 종가(룩어헤드 제거, 2026-07-29 리뷰 반영).
     """
     df = pd.read_parquet(DERIVED / f"{FIELDS[field]}.parquet")
     kr = [c for c in codes if str(c).isdigit()]
@@ -114,9 +127,7 @@ def load_field(field: str, codes: list[str]) -> pd.DataFrame:
     have = [c for c in kr if c in df.columns]
     out = df[have].astype("float64")
     for t in fr:
-        s = foreign_ohlcv_krw(t)[field]
-        # reindex 후 ffill — 선행 NaN(상장 전)은 ffill이 채우지 않으므로 그대로 남는다
-        out[t] = s.reindex(out.index).ffill().astype("float64")
+        out[t] = align_foreign(foreign_ohlcv_krw(t)[field], out.index)
     return out
 
 
@@ -212,7 +223,7 @@ def prices_offline(codes: list[str], start: str | None = None,
 
 def adv_offline(codes: list[str], lookback_days: int = 60,
                 end: str | None = None) -> pd.Series:
-    """최근 N거래일 일평균 **실측 거래대금**(원).
+    r"""최근 N거래일 일평균 **실측 거래대금**(원).
 
     ⚠️ FnGuide 구간의 거래대금은 시간외·블록딜을 포함하는 것으로 보여 대형주에서
     정규장 대비 1.7~2.0배 크다(`D:\data\_live\volume_scale.csv`). 용량을

@@ -46,8 +46,8 @@ PARTICIPATION, MAX_DAYS = 0.20, 5.0     # 기존 용량 가정과 동일
 CU_CANDIDATES = (7, 10, 15, 20, 30, 50)
 
 
-def load_global_composition() -> pd.Series:
-    """global_scenario_구성.csv → {코드: 비중(합 1)}. MU 포함 13종목."""
+def load_global_composition() -> tuple[pd.Series, dict]:
+    """global_scenario_구성.csv → ({코드: 비중(합 1)}, {코드: 종목명})."""
     c = pd.read_csv(COMPOSITION, encoding="utf-8-sig", dtype={"코드": str})
     w = pd.Series(c["편입비중(%)"].values / 100.0, index=c["코드"].values)
     if abs(w.sum() - 1.0) > 1e-4:
@@ -113,12 +113,14 @@ def main() -> int:
     # ── ③ 환노출 — KRW 환산 vs 환율 고정(헤지 근사) ──────────────────
     close_kr = prices_offline(kr_codes)
     cal = close_kr.index                                    # 한국 거래일 달력
-    mu_usd_on_cal = usd.reindex(cal).ffill()
-    fx_on_cal = fx.reindex(cal).ffill()
+    # T-1 시프트: 미국 T 종가는 한국 T 마감 뒤에 나온다 — 룩어헤드 제거
+    # (hist_data.align_foreign과 같은 규약, 2026-07-29 리뷰 반영)
+    mu_usd_on_cal = usd.reindex(cal).ffill().shift(1)
+    fx_on_cal = fx.reindex(cal).ffill().shift(1)
     panel_fx = close_kr.copy()
     panel_fx["MU"] = mu_usd_on_cal * fx_on_cal              # 환노출 포함
     panel_hg = close_kr.copy()
-    panel_hg["MU"] = mu_usd_on_cal * float(fx_on_cal.iloc[0])  # 환율 고정(헤지 근사)
+    panel_hg["MU"] = mu_usd_on_cal * float(fx_on_cal.dropna().iloc[0])  # 환율 고정(헤지 근사)
 
     bt_fx = simulate_reset_index(panel_fx.dropna(how="all"), w)
     bt_hg = simulate_reset_index(panel_hg.dropna(how="all"), w)
