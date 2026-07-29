@@ -110,6 +110,23 @@ check("차단 후 종목수 1 감소", bad["종목수"] == base["종목수"] - 1
       f"{bad['종목수']} vs {base['종목수']}")
 check("탈락 건수 리포트", bad["사전스크린 탈락"] == 1, bad["사전스크린 탈락"])
 
+# ── 8) 관찰종목 단일 출처 — run_health가 run_final과 갈라지지 않는다 ──
+# 회귀: 초기 run_health가 SFA반도체(036540)를 모회사 에스에프에이(056190)로
+# 잘못 복사해 엉뚱한 회사를 감시했다. 관찰종목은 판정 33종목 안에 있어야 한다
+# (실사에서 '보류'된 종목이므로 — 판정 밖 코드는 오타다).
+from etf.run_final import WATCHLIST  # noqa: E402
+from etf.run_health import WATCH  # noqa: E402
+
+check("run_health.WATCH == run_final.WATCHLIST (단일 출처)",
+      WATCH is WATCHLIST, f"{WATCH} vs {WATCHLIST}")
+judged_codes = set(j["코드"])
+bad_codes = [c for c in WATCHLIST if c not in judged_codes]
+check("관찰종목 코드는 판정 33종목 안에 있다", not bad_codes, bad_codes)
+judged_names = j.set_index("코드")["종목명"]
+mismatch = {c: (n, judged_names.get(c)) for c, n in WATCHLIST.items()
+            if judged_names.get(c) != n}
+check("관찰종목 이름이 판정 CSV와 일치", not mismatch, mismatch)
+
 print()
 print("전부 통과" if ok else "실패 있음")
 sys.exit(0 if ok else 1)

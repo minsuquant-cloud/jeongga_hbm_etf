@@ -23,12 +23,13 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from etf.hist_data import load_composition  # noqa: E402
+# 관찰종목은 실사 확정(run_final)이 단일 출처다. 여기 복사해 두면 갈라진다 —
+# 실제로 초기 버전이 SFA반도체(036540)를 모회사 에스에프에이(056190)로 잘못
+# 적어, 이름 대조 가드까지 통과한 채 엉뚱한 회사를 감시했다(2026-07-29 발견).
+from etf.run_final import WATCHLIST as WATCH  # noqa: E402
 
 _SNAP = Path(r"D:/data/_derived")
 OUT = Path(__file__).resolve().parent / "output"
-
-# 관찰종목 (2026-07-25 실사 판정: 편입 보류 — 공시·실적 모니터링 대상)
-WATCH = {"222800": "심텍", "056190": "에스에프에이"}
 
 
 def _fin_panel() -> dict[str, pd.DataFrame]:
