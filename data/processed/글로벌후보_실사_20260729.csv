@@ -1,0 +1,9 @@
+﻿종목명,코드,거래소,통화,체인구간,국내대응,근거문서,시가총액,FF,유동시총,거래대금,PER,PBR,자본잠식,유형,HBM양산,HBM노출도,메모리향비중,HBM공정확인,위원회확인,감사의견,관리종목,환산기준일
+Micron Technology,MU,NASDAQ,USD,HBM 제조,삼성전자·SK하이닉스 (세계 HBM 3사 중 유일한 비편입),"10-K Part I·II — DRAM/HBM 매출 구성, HBM 양산 공시",,,,,,,,메모리제조,,,,,,,,
+TSMC,TSM,NYSE(ADR),USD,로직다이·CoWoS 패키징,없음 ※규칙상 핵심(노출도30%)·위성(메모리향70%) 문턱을 넘기 어려움 — 그 판정도 유효한 결과,20-F — HBM 관련(CoWoS/SoIC) 매출 귀속 근거,,,,,,,,파운드리,,,,,,,,
+BE Semiconductor,BESI.AS,Euronext,EUR,하이브리드 본딩 장비,한미반도체,Annual Report — hybrid bonding 수주·매출 비중,,,,,,,,장비,,,,,,,,
+ASMPT,0522.HK,HKEX,HKD,TC 본더,한미반도체 (직접 경쟁),Annual Report — advanced packaging(TCB) 부문,,,,,,,,장비,,,,,,,,
+Advantest,6857.T,TSE,JPY,메모리 테스터,테크윙·네오셈,"유가증권보고서 — 메모리 테스터 매출 비중, HBM 수요 언급",,,,,,,,장비,,,,,,,,
+Camtek,CAMT,NASDAQ,USD,검사,오로스테크놀로지,20-F — HBM/advanced packaging 검사 수주 공시,,,,,,,,장비,,,,,,,,
+Onto Innovation,ONTO,NYSE,USD,계측,오로스테크놀로지 ※2019 합병 상장 — 위기표본 2018 없음,10-K — advanced nodes/packaging 계측 매출,,,,,,,,장비,,,,,,,,
+Resonac,4004.T,TSE,JPY,HBM 소재(접착필름 등),솔브레인·티이엠씨,유가증권보고서 — 반도체 소재 부문 중 HBM 귀속(NCF 등),,,,,,,,소재,,,,,,,,
