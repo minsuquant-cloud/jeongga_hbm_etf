@@ -75,9 +75,15 @@ def fetch_prices(codes: list[str], start: str, end: str) -> pd.DataFrame:
         from etf.hist_data import prices_offline
         df = prices_offline(codes, start, end)
         if len(df) and df.shape[1] == len(codes):
+            print(f"[출처] 가격 = 융합 데이터셋 ({df.shape[1]}종목 × "
+                  f"{len(df)}거래일, {df.index[-1].date()}까지)")
             return df
-    except Exception:
-        pass
+        print(f"[출처] 융합 데이터셋 컬럼 {df.shape[1]}/{len(codes)} 부족 "
+              "→ 네트워크 조회로 전환")
+    except Exception as e:
+        # 조용히 넘기지 않는다 — 리포트만 보고 어느 소스인지 알 수 없으면
+        # 폐기 구성 사고와 같은 종류의 오독이 생긴다(source_line 원칙).
+        print(f"[출처] 융합 데이터셋 실패({str(e)[:60]}) → 네트워크 조회로 전환")
     # FDR 폴백은 국내 전용 — 해외 티커를 여기로 태우면 현지통화(USD 등)가
     # KRW 패널에 섞이는 조용한 통화 사고가 난다. hist_data의 환산 레이어가
     # 정상 경로이므로, 폴백에 해외가 오면 즉시 실패시킨다(fail-closed).

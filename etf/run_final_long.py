@@ -11,8 +11,10 @@ etf/run_final_long.py — 12.5년 융합 데이터 기준 최종 산출
    그건 원할 때 원하는 만큼 체결되지 않는다. 며칠 만에 청산 가능한가를 묻는
    용량 계산에는 정규장만 세는 편이 정직하다(대형주는 이것만으로 1.7~2.0배 차이).
 2. **개인 복제 최소 투자금액**을 낸다. 실제 ETF 상장은 자산운용사만 가능하므로,
-   개인이 이 구성을 재현하려면 12종목을 비중대로 직접 사야 한다. 최소 1주 단위라
-   비중을 맞출 수 있는 하한이 존재한다.
+   개인이 이 구성을 재현하려면 전 종목을 비중대로 직접 사야 한다. 최소 1주 단위라
+   비중을 맞출 수 있는 하한이 존재한다. 산출은 `etf/replication.py`에 있고
+   **가격 교란에 강건한 금액**을 고른다(이분탐색 단조 가정을 버린 이유는 그쪽
+   도크스트링 참조).
 
     .venv/Scripts/python.exe etf/run_final_long.py
 """
@@ -31,37 +33,11 @@ from etf.hist_data import (adv_offline, build_index, conservative_adv,  # noqa: 
                            load_composition, load_field, load_names,
                            volume_scale)
 from etf.nav_sim import drag_decomposition, simulate_etf_nav  # noqa: E402
+from etf.replication import min_replication_cost  # noqa: E402
 
 OUT_DIR = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "etf", "output")
 TER_BP, COST_BP, CASH_W = 45.0, 30.0, 0.01
-
-
-def min_replication_cost(w: pd.Series, price: pd.Series,
-                         tol_bp: float = 50.0) -> dict:
-    """개인이 이 구성을 재현하려면 최소 얼마가 필요한가.
-
-    각 종목을 정수 주로만 살 수 있으므로, 총액이 작으면 비중이 크게 어긋난다.
-    총 편차가 tol_bp 이내로 들어오는 최소 금액을 이분탐색으로 찾는다.
-    """
-    def deviation(total: float) -> float:
-        shares = (w * total / price).apply(lambda x: int(x))   # 내림 = 현금 잔여
-        actual = shares * price
-        return float((actual / total - w).abs().sum()) * 1e4   # bp
-
-    lo, hi = 1e6, 1e10
-    if deviation(hi) > tol_bp:
-        return {"최소투자금액": float("nan"), "달성편차(bp)": deviation(hi)}
-    for _ in range(60):
-        mid = (lo + hi) / 2
-        if deviation(mid) <= tol_bp:
-            hi = mid
-        else:
-            lo = mid
-    shares = (w * hi / price).apply(lambda x: int(x))
-    return {"최소투자금액": hi, "달성편차(bp)": deviation(hi),
-            "0주 종목": int((shares == 0).sum()),
-            "현금 잔여(%)": float(1 - (shares * price).sum() / hi) * 100}
 
 
 def main() -> int:
@@ -109,11 +85,16 @@ def main() -> int:
         rep.append({"허용편차(bp)": tol,
                     "최소투자금액(만원)": round(r["최소투자금액"] / 1e4, 0),
                     "실제편차(bp)": round(r["달성편차(bp)"], 1),
-                    "현금잔여(%)": round(r.get("현금 잔여(%)", 0), 2)})
+                    "현금잔여(%)": round(r.get("현금 잔여(%)", 0), 2),
+                    "p95 편차(bp)": round(r["p95 편차(bp)"], 1),
+                    "오늘만통과(만원)": round(r["오늘만통과금액"] / 1e4, 0)})
     rep_df = pd.DataFrame(rep)
     print(rep_df.to_string(index=False))
     print(f"    참고: 최고가 종목 {names.get(price.idxmax(), '')} "
           f"{price.max():,.0f}원 (비중 {w[price.idxmax()]*100:.1f}%)")
+    print("    ※ '최소투자금액'은 가격 ±5% 교란 200회 전부 허용치 이내인 금액이다."
+          " '오늘만통과'는 오늘 종가 한 점에서만 통과하는 금액 — 정수 주 격자가"
+          " 톱니라 강건하지 않다(CU와 같은 이유로 채택하지 않는다).")
 
     out = os.path.join(OUT_DIR, "final_long.csv")
     with open(out, "w", encoding="utf-8-sig") as f:

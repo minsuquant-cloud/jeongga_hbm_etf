@@ -105,9 +105,14 @@ def fetch_adv(codes: list[str], lookback_days: int = 60,
         from etf.hist_data import adv_offline
         s_off = adv_offline(codes, lookback_days, end)
         if s_off.notna().all():
+            print(f"[출처] ADV = 융합 데이터셋 실측 거래대금 ({len(codes)}종목)")
             return s_off
-    except Exception:
-        pass
+        gap = s_off.index[s_off.isna()].tolist()
+        print(f"[출처] 융합 데이터셋에 거래대금 결측 {gap} → 네트워크 조회로 전환")
+    except Exception as e:
+        # 조용히 넘기지 않는다 — 리포트만 보고 어느 소스인지 알 수 없으면
+        # 폐기 구성 사고와 같은 종류의 오독이 생긴다(source_line 원칙).
+        print(f"[출처] 융합 데이터셋 ADV 실패({str(e)[:60]}) → 네트워크 조회로 전환")
     import datetime as dt
     end_d = pd.Timestamp(end or dt.date.today())
     start_d = end_d - pd.Timedelta(days=lookback_days * 2 + 10)
