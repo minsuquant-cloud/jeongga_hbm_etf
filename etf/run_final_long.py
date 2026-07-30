@@ -57,6 +57,29 @@ def main() -> int:
     print("[1] 추적오차 분해 — 12.5년 전 구간")
     print(dd.round(2).to_string())
 
+    # [1b] 해외 체결비용 가정 민감도 — 참여율·청산일수(T2b)와 같은 성격이다.
+    # 해외 편입분(MU)은 해외 수수료 + 환전 스프레드가 붙어 국내와 다른데,
+    # 그 값은 관측이 아니라 우리가 고르는 가정이라 범위를 함께 보여준다.
+    fr_share = (float(bt["turnover_foreign"].sum())
+                / max(float(bt["turnover"].sum()), 1e-12)) * 100
+    rows_fc = []
+    for fc in (COST_BP, 50.0, 80.0, 120.0):
+        n2 = simulate_etf_nav(bt, ter_bp=TER_BP, trade_cost_bp=COST_BP,
+                              cash_weight=CASH_W, foreign_cost_bp=fc)
+        d2 = drag_decomposition(bt, n2, TER_BP, COST_BP, CASH_W,
+                                foreign_cost_bp=fc)
+        rows_fc.append({"해외 체결비용(bp)": fc,
+                        "갭(bp/년)": round(d2["실측 갭(로그 bp/년)"], 2),
+                        "매매비용 기여(bp/년)": round(d2["매매비용 기여(bp/년)"], 2),
+                        "국내동일 대비(bp)": round(
+                            d2["실측 갭(로그 bp/년)"]
+                            - dd["실측 갭(로그 bp/년)"], 2)})
+    fc_df = pd.DataFrame(rows_fc)
+    print(f"\n[1b] 해외 체결비용 가정 민감도 — 해외 회전율 몫 {fr_share:.1f}%")
+    print(fc_df.to_string(index=False))
+    print(f"    → 해외를 국내의 4배(120bp)로 잡아도 갭은 "
+          f"{fc_df['국내동일 대비(bp)'].max():+.1f}bp. 회전 몫이 작아 유계다.")
+
     # ── 2) 용량: 실측 vs 정규장 ───────────────────────────────────────
     adv_raw, adv_reg = adv_offline(codes), conservative_adv(codes)
     rows = []
@@ -99,6 +122,8 @@ def main() -> int:
     out = os.path.join(OUT_DIR, "final_long.csv")
     with open(out, "w", encoding="utf-8-sig") as f:
         f.write("# 1 추적오차 (12.5년)\n"); dd.round(3).to_csv(f)
+        f.write("\n# 1b 해외 체결비용 가정 민감도\n")
+        fc_df.to_csv(f, index=False)
         f.write("\n# 2 용량\n"); cap.to_csv(f, index=False)
         f.write("\n# 4 개인 복제 최소금액\n"); rep_df.to_csv(f, index=False)
     print(f"\n저장: {out}")

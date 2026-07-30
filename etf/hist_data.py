@@ -158,7 +158,12 @@ def simulate_reset_index(close: pd.DataFrame, target: pd.Series,
     target은 합이 1이 아니어도 내부에서 정규화한다(동일가중 반사실 등
     임의 비중을 그대로 넘길 수 있게).
 
-    반환: level(지수), turnover(편도 = 교체비율), n_stocks(당시 편입 수)
+    반환: level(지수), turnover(편도 = 교체비율), turnover_foreign(그중 해외
+    티커 몫), n_stocks(당시 편입 수)
+
+    turnover_foreign을 따로 세는 이유: 해외 편입분(MU)은 국내와 체결비용이
+    다르다(해외 수수료 + 환전 스프레드). nav_sim이 차등 비용을 얹으려면
+    회전율이 국내/해외로 갈라져 있어야 한다 — 합계만으로는 못 나눈다.
     """
     target = target / target.sum()
     tgt = pit_weights(close, target)          # 시점별 목표(살아있는 종목만)
@@ -170,8 +175,10 @@ def simulate_reset_index(close: pd.DataFrame, target: pd.Series,
     resets = set(close.groupby([close.index.year, close.index.quarter])
                       .apply(lambda g: g.index.max()).tolist())
 
+    is_foreign = ~pd.Index(close.columns).map(lambda c: str(c).isdigit()).values
+
     w = tgt.iloc[0].copy()
-    levels, tnos, ns = [], [], []
+    levels, tnos, tnos_fr, ns = [], [], [], []
     lvl = base
     for i, d in enumerate(close.index):
         if i > 0:
@@ -180,17 +187,22 @@ def simulate_reset_index(close: pd.DataFrame, target: pd.Series,
             if tot > 0:
                 lvl *= tot
                 w = grown / tot                # 표류한 비중
-        tno = 0.0
+        tno = tno_fr = 0.0
         if i == 0 or d in resets:
             new = tgt.loc[d]
             if float(new.sum()) > 0:
-                tno = float((new - w).abs().sum()) / 2
+                delta = (new - w).abs()
+                tno = float(delta.sum()) / 2
+                # 해외 몫도 같은 척도(편도 = 절반)로 센다 — 합치면 turnover
+                tno_fr = float(delta.to_numpy()[is_foreign].sum()) / 2
                 w = new.copy()
         levels.append(lvl)
         tnos.append(tno)
+        tnos_fr.append(tno_fr)
         ns.append(int((w > 0).sum()))
 
-    return pd.DataFrame({"level": levels, "turnover": tnos, "n_stocks": ns,
+    return pd.DataFrame({"level": levels, "turnover": tnos,
+                         "turnover_foreign": tnos_fr, "n_stocks": ns,
                          "reason": ""}, index=close.index)
 
 

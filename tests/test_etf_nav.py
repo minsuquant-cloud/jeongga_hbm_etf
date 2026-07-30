@@ -122,6 +122,54 @@ try:
 except ValueError:
     check("음수 보수 방어", True)
 
+
+# ── 해외 차등 체결비용 (S6 이월 — MU는 해외 수수료 + 환전 스프레드) ────
+bt_fr = make_bt(n=252, vol=0, event_every=63, event_turnover=0.10).copy()
+bt_fr["turnover_foreign"] = bt_fr["turnover"] * 0.4      # 회전의 40%가 해외
+
+nav_same = simulate_etf_nav(bt_fr, ter_bp=0, trade_cost_bp=30, cash_weight=0)
+nav_none = simulate_etf_nav(bt_fr, ter_bp=0, trade_cost_bp=30, cash_weight=0,
+                            foreign_cost_bp=30)
+check("해외비용 = 국내비용이면 동일 NAV",
+      float((nav_same - nav_none).abs().max()) < 1e-6)
+
+nav_hi = simulate_etf_nav(bt_fr, ter_bp=0, trade_cost_bp=30, cash_weight=0,
+                          foreign_cost_bp=80)
+check("해외비용↑ → NAV 하락", float(nav_hi.iloc[-1]) < float(nav_same.iloc[-1]))
+
+# 손계산: 해외 40%에 +50bp → 추가 비용 = 0.4×총회전율×50bp
+d_same = drag_decomposition(bt_fr, nav_same, 0, 30, 0)
+d_hi = drag_decomposition(bt_fr, nav_hi, 0, 30, 0, foreign_cost_bp=80)
+yrs = (bt_fr.index[-1] - bt_fr.index[0]).days / 365.25
+expect = 0.4 * float(bt_fr["turnover"].sum()) * 50 / yrs      # bp/년
+got = d_hi["매매비용 기여(bp/년)"] - d_same["매매비용 기여(bp/년)"]
+check("추가 비용 손계산 일치 (0.4×회전×50bp)", abs(got - expect) < 0.5,
+      f"got={got:.2f} expect={expect:.2f}")
+
+# 항등 분해가 차등 비용에서도 유지되는가
+check("차등 비용에서도 합계 = 실측 (항등)",
+      abs(d_hi["실측 갭(로그 bp/년)"] - (d_hi["TER 기여(bp/년)"]
+          + d_hi["매매비용 기여(bp/년)"] + d_hi["현금 기여(bp/년)"])) < 1e-6)
+
+# turnover_foreign 없으면 조용히 무시 (하위호환)
+bt_kr = bt_fr.drop(columns=["turnover_foreign"])
+check("turnover_foreign 없으면 하위호환",
+      float((simulate_etf_nav(bt_kr, ter_bp=0, trade_cost_bp=30,
+                              foreign_cost_bp=80) - nav_same).abs().max()) < 1e-9)
+
+try:
+    simulate_etf_nav(bt_fr, foreign_cost_bp=-1)
+    check("음수 해외비용 방어", False)
+except ValueError:
+    check("음수 해외비용 방어", True)
+
+bad = bt_fr.copy(); bad["turnover_foreign"] = bad["turnover"] * 2
+try:
+    simulate_etf_nav(bad, trade_cost_bp=30, foreign_cost_bp=50)
+    check("해외회전 > 총회전 방어", False)
+except ValueError:
+    check("해외회전 > 총회전 방어", True)
+
 print()
 print("전부 통과" if ok else "실패 있음")
 sys.exit(0 if ok else 1)
