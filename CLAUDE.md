@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 자주 쓰는 명령어
 
 ```powershell
-# 테스트 14종 (전부 오프라인·네트워크 불필요, 검증 237건)
+# 테스트 18종 (전부 오프라인·네트워크 불필요, 검증 317건)
 Get-ChildItem tests\*.py | ForEach-Object { .venv\Scripts\python.exe $_.FullName }
 
 # 개별 — 엔진 3종
