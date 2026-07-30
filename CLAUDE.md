@@ -12,7 +12,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 자주 쓰는 명령어
 
 ```powershell
-# 테스트 18종 (전부 오프라인·네트워크 불필요, 검증 317건)
+# ★ 설계 검증 전체 재현 (이것이 '최종본' 진입점 — EOD 게이트 내장)
+.venv\Scripts\python.exe etf\run_all.py                  # 11단계, 약 90초
+.venv\Scripts\python.exe etf\run_all.py --skip-network    # 오프라인 7단계, 40초
+.venv\Scripts\python.exe etf\run_all.py --gate-only       # 마감 여부만 확인
+# 주의: run_final.py는 최종본이 아니다 — 07-25 12종목 시절 러너(이름만 final)
+
+# 테스트 19종 (전부 오프라인·네트워크 불필요, 검증 347건)
 Get-ChildItem tests\*.py | ForEach-Object { .venv\Scripts\python.exe $_.FullName }
 
 # 개별 — 엔진 3종
@@ -161,10 +167,10 @@ MDD는 -45.2% vs -53.7% — 어느 비중이든 -45% 이상 깨진다. **낙폭�
 
 | 항목 | 기존(강세장 1년) | **12.5년 융합** (07-28 재실행) |
 |---|---:|---:|
-| 추적오차 갭 | 61bp/년 | **76bp/년** (TER 45 + 비용 7.8 + 현금 23) |
+| 추적오차 갭 | 61bp/년 | **77.3bp/년** (TER 45.0 + 비용 8.4 + 현금 23.9) |
 | 현금 1% 기여 | +92~113bp (드래그) | **+23bp** — 강세장 1년이 예외적으로 컸던 것 |
-| 용량 (실측 거래대금) | 1,994억 | 2,329억 |
-| **용량 (정규장 기준)** | — | **1,766억** ← 설계 기준으로 쓸 것 |
+| 용량 (실측 거래대금) | 1,994억 | 2,249억 |
+| **용량 (정규장 기준)** | — | **1,706억** ← 설계 기준으로 쓸 것 |
 | CU 총괴리 | 20억 7.1bp | 20억 **9.8bp** · 7억 10.5bp — 정수 주 격자라 날마다 움직인다 |
 
 (07-27 첫 산출 때 매매비용이 0.2bp로 나왔던 것은 회전율 누락 버그 — f3807a5에서
