@@ -11,7 +11,7 @@ etf/run_rebalance_review.py — 리밸런싱 변경 제안 보고서 (승인 게
                 보고서로 만든다. **정본은 절대 건드리지 않는다.**
   2단계 [승인]  사용자가 보고서를 읽고 오케이.
   3단계 [반영]  --approve <제안CSV> 로 확정 구성표 승격 → 상수 전환 →
-                러너 재실행 → export_basket 으로 정가 인계.
+                run_all.py 로 산출물 전체 재실행.
 
 엔진 충실도
 -----------
@@ -166,9 +166,8 @@ def main() -> int:
         print("\n남은 절차 (정본 전환 체크리스트 — CLAUDE.md 원칙):")
         print(f"  1. run_tracking.CONSTITUENTS · hist_data.FINAL 상수를 "
               f"'{os.path.basename(dst)}'로 갱신 (코드 변경 = 의도 명시)")
-        print("  2. 러너 전체를 같은 날 재실행 (숫자 날짜 통일 원칙)")
-        print("  3. export_basket.py --effective <정기변경일> 로 정가 인계")
-        print("  4. 커밋 — 구 구성표는 역사 기록으로 보존")
+        print("  2. etf/run_all.py 로 산출물 전체 재실행 (같은 날 = 날짜 통일 원칙)")
+        print("  3. 커밋 — 구 구성표는 역사 기록으로 보존")
         return 0
 
     # ── 1단계 [보고] — 정본 무접촉 ─────────────────────────────────────

@@ -306,16 +306,14 @@ MU도 위기 용량 74~187억은 못 고친다) · CU **30억**(총괴리 8.4bp 
 
 ```powershell
 # 1단계 [보고] — 판정 CSV 갱신(재실사·시총) 후. 정본 무접촉.
-.venv\Scripts\python.exe etf
-un_rebalance_review.py
+.venv\Scripts\python.exe etf\run_rebalance_review.py
 #   → etf/output/rebalance_proposal_<날짜>.csv (+ _diff.csv)
 #   diff: 신규/편출/군이동/버퍼유지(⚠표시)/비중Δ · 회전율 · 순도 변화
 # 2단계 [승인] — 사용자가 보고서 읽고 오케이
 # 3단계 [반영]
-.venv\Scripts\python.exe etf
-un_rebalance_review.py --approve etf/output/rebalance_proposal_<날짜>.csv
+.venv\Scripts\python.exe etf\run_rebalance_review.py --approve etf/output/rebalance_proposal_<날짜>.csv
 #   → data/processed/구성표_확정_<날짜>.csv 승격 + 체크리스트 출력
-#     (상수 전환 → 러너 전체 재실행 → export_basket → 커밋)
+#     (상수 전환 → run_all.py 재실행 → 커밋)
 ```
 
 - 선정은 `rebalance.select_from_selection`(팀 v2) — **히스테리시스 버퍼 작동**
@@ -334,7 +332,7 @@ un_rebalance_review.py --approve etf/output/rebalance_proposal_<날짜>.csv
 만들었다가 **중단했다**. 결함이 아니라 **운용 시스템 성격과 맞지 않아서**
 사용자가 빼기로 한 것이다(오전까지 통합 상태였음). 따라서:
 
-- `etf/export_basket.py`·`tests/test_export_basket.py` 삭제, `D:\data\_index  JGHBM_basket*.csv`도 제거 — 정가가 옛 스냅샷을 실수로 읽는 경로를 없앤다.
+- `etf/export_basket.py`·`tests/test_export_basket.py` 삭제, 공용 데이터 루트의 `JGHBM_basket.csv`·`JGHBM_basket_meta.csv`도 제거 — 정가가 옛 스냅샷을 실수로 읽는 경로를 없앤다.
 - 다시 필요해지면 git 히스토리(`3c7bd41`)에 전량 교체 계약(부분 채택 금지·
   sha256 무결성·시행일 종가 적용·주문은 diff로)이 그대로 있다.
 - **`JGHBM.parquet`(지수 시세)은 유지한다** — tech_dashboard에서 종목처럼
