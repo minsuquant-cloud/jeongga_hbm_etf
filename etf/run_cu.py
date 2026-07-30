@@ -30,12 +30,20 @@ OUT_DIR = os.path.join(BASE, "etf", "output")
 
 def fetch_last_prices(codes: list[str]) -> pd.Series:
     """최신 종가(원). 해외 티커는 KRW 환산 레이어(hist_data)로 — 현지통화가
-    KRW 격자에 섞이면 CU 계산 전체가 무의미해진다."""
+    KRW 격자에 섞이면 CU 계산 전체가 무의미해진다.
+
+    **as-of가 종목마다 다를 수 있다.** CU는 '지금 바스켓을 담으면 몇 주냐'를
+    묻는 계산이라 각 시장의 최신 체결가를 쓰는 것이 맞다(백테스트의 T-1
+    룩어헤드 규칙은 여기 적용되지 않는다 — 그건 과거 지수 재생용이다).
+    다만 러너마다 as-of가 달라 CU 값이 갈리는 사고가 있었으므로
+    (2026-07-30: run_final_long은 parquet 07-29, 여기는 FDR 07-30 → CU 30억
+    vs 20억), 반환값 attrs에 종목별 기준일을 실어 리포트에 찍는다.
+    """
     import FinanceDataReader as fdr
     from etf.hist_data import foreign_ohlcv_krw
     end = dt.date.today()
     start = end - dt.timedelta(days=14)
-    px = {}
+    px, asof = {}, {}
     for code in codes:
         if not str(code).isdigit():
             s = foreign_ohlcv_krw(code)["Close"].dropna()
@@ -44,7 +52,24 @@ def fetch_last_prices(codes: list[str]) -> pd.Series:
         if len(s) == 0:
             raise RuntimeError(f"가격 조회 실패: {code}")
         px[code] = float(s.iloc[-1])
-    return pd.Series(px)
+        asof[code] = str(s.index[-1].date())
+    out = pd.Series(px)
+    out.attrs["asof"] = asof
+    return out
+
+
+def price_source_line(px: pd.Series) -> str:
+    """가격 기준일 한 줄 — 구성 출처(source_line)와 같은 원칙을 가격에도."""
+    asof = px.attrs.get("asof", {})
+    if not asof:
+        return "가격 기준일: 미상"
+    days = sorted(set(asof.values()))
+    if len(days) == 1:
+        return f"가격: FDR 최신 종가 (전 종목 {days[0]})"
+    grouped = {d: [c for c, v in asof.items() if v == d] for d in days}
+    parts = [f"{d} {len(v)}종목" for d, v in grouped.items()]
+    return ("가격: FDR 최신 종가 — ⚠기준일 혼재 (" + " · ".join(parts) + ")"
+            " · 시장별 마감 시각 차이")
 
 
 def main():
@@ -64,7 +89,8 @@ def main():
     weights = weights / weights.sum()
 
     prices = fetch_last_prices(codes)
-    print(f"{source_line(c)} · 최신 종가 수집 (기준일 {dt.date.today()})")
+    print(f"{source_line(c)}")
+    print(f"{price_source_line(prices)}  (실행 {dt.date.today()})")
 
     grid = min_cu_notional(weights, prices, max_total_dev_bp=args.max_dev_bp,
                            shock=args.shock, n_trials=args.trials)
