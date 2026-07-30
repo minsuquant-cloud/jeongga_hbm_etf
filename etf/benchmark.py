@@ -36,8 +36,10 @@ JUDGED_FINAL = os.path.join(PROC, "판정완료_20260725_실사확정.csv")
 
 
 def _read_exposure(path: str) -> pd.Series:
+    from etf.global_candidates import normalize_code
     d = pd.read_csv(path, encoding="utf-8-sig")
-    codes = d["코드"].astype(str).str.zfill(6)
+    # 숫자 코드만 zfill — 해외 티커('MU')를 '0000MU'로 만들면 매칭이 깨진다
+    codes = d["코드"].map(normalize_code)
     expo = pd.to_numeric(d["HBM노출도"], errors="coerce")
     if expo.max() > 1.5:                      # % 표기(0~100)면 소수로 환산
         expo = expo / 100.0
@@ -45,9 +47,16 @@ def _read_exposure(path: str) -> pd.Series:
 
 
 def load_exposures() -> pd.Series:
-    """판정완료 33종목의 HBM노출도(0~1). {6자리 코드: 노출도}
+    """판정 노출도(0~1). 국내 33종목 + **판정 완료된 해외 후보**.
 
-    두 판정 파일의 노출도가 어긋나면 예외 — 어느 쪽이 정본인지 사람이
+    해외를 합류시키는 이유: 순도 하한은 '판정 밖 = 0'으로 치는 보수적
+    지표인데, 우리 지수의 편입 종목(MU)이 판정 밖으로 빠지면 **자기 지수의
+    순도가 과소평가된다**(2026-07-30 발견: 29.81% → 25.89%, MU 기여 3.91%p가
+    통째로 누락. 판정커버리지도 100%가 아니라 86.96%로 나왔다).
+    경쟁 ETF와의 비교는 여전히 '같은 잣대'다 — 그들의 해외 보유분도 이제
+    같은 등록부 기준으로 평가된다.
+
+    두 국내 판정 파일의 노출도가 어긋나면 예외 — 어느 쪽이 정본인지 사람이
     정해야 하는 상황이지 조용히 한쪽을 쓸 일이 아니다(fail-closed).
     """
     out = _read_exposure(JUDGED)
@@ -62,6 +71,19 @@ def load_exposures() -> pd.Series:
                 "판정 파일 간 HBM노출도 불일치 — 순도 비교의 잣대가 갈립니다: "
                 f"{drift.tolist()} (기준 {os.path.basename(JUDGED)} vs "
                 f"{os.path.basename(JUDGED_FINAL)})")
+    # 해외: 판정이 완료된 행만 (빈칸 = 편입 불가라 순도 계산에도 넣지 않는다)
+    try:
+        from etf.global_candidates import load_global_judged
+        gl, _pending = load_global_judged()
+        if len(gl):
+            gexpo = pd.to_numeric(gl["HBM노출도"], errors="coerce")
+            gs = pd.Series(gexpo.values, index=gl["코드"]).dropna()
+            dup = out.index.intersection(gs.index)
+            if len(dup):
+                raise ValueError(f"국내·해외 판정 코드 충돌: {dup.tolist()}")
+            out = pd.concat([out, gs])
+    except FileNotFoundError:
+        pass          # 글로벌 실사 템플릿이 아직 없으면 국내만 (초기 상태)
     return out
 
 

@@ -94,6 +94,23 @@ rep_ok = rep_all_nan.copy()
 rep_ok.loc[1, "순도 하한(%)"] = 22.3
 check("일부만 실패하면 통과", rep_ok.iloc[1:]["순도 하한(%)"].notna().sum() > 0)
 
+# ── 9) 해외 판정 합류 — 자기 지수가 '판정 밖'으로 빠지지 않는다 ────────
+# 회귀(2026-07-30): load_exposures가 국내 판정만 읽어 MU가 판정 밖이 되면서
+# 자체 순도가 29.81 → 25.89%로 과소, 판정커버리지도 86.96%로 떨어졌다.
+expo_all = bm.load_exposures()
+from etf.run_tracking import load_constituents  # noqa: E402
+
+cur = load_constituents()
+missing = [c for c in cur["코드"] if c not in expo_all.index]
+check("편입 전 종목이 판정 노출도에 있다 (커버리지 100%)", not missing, missing)
+w_cur = pd.Series((cur["편입비중(%)"] / 100).values, index=cur["코드"])
+m_cur = purity_metrics(w_cur / w_cur.sum(), expo_all)
+check("자체 판정커버리지 100%",
+      abs(m_cur["판정커버리지(%)"] - 100.0) < 1e-6, m_cur["판정커버리지(%)"])
+check("순도 하한 == 커버 내 순도 (커버리지 100%면 같아야)",
+      abs(m_cur["순도 하한(%)"] - m_cur["커버 내 순도(%)"]) < 1e-6)
+check("해외 티커가 zfill로 깨지지 않음", "0000MU" not in expo_all.index)
+
 print()
 print("전부 통과" if ok else "실패 있음")
 sys.exit(0 if ok else 1)
