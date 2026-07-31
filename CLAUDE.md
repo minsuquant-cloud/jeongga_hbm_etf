@@ -16,6 +16,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **작업이 끝나면 GitHub에 푸시한다** (`origin` = minsuquant-cloud/jeongga_hbm_etf).
   로컬에만 쌓아두지 않는다 — 노트북 이관 중에 유실될 여지를 없앤다.
 
+> **운영 절차는 `docs/운영가이드.md`** — 자동화 현황·정기변경 3단계·환경변수·
+> 문제 해결·산출물 지도. "내일 아침 뭘 어떻게 돌리나"는 그쪽을 볼 것.
+
 ## 자주 쓰는 명령어
 
 ```powershell
