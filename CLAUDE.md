@@ -9,6 +9,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 원본 팀 레포: `D:\dev\HBM_index` (`완성본/` 폴더가 이 레포의 뿌리). **팀 레포와 git 연결 없음** — 팀 쪽이 바뀌어도 여기는 확정본 기준으로 독립 운영.
 - Python 3.12 + 레포별 `.venv`. 한글 출력은 `PYTHONUTF8=1`로 실행.
 
+## 작업 환경 (2026-07-31 사용자 결정)
+
+- **이 노트북에서만 작업한다.** 구 노트북에서 돌리던 자동 시스템도 전부 여기로
+  옮겨 시작한다 — 두 대에서 나눠 작업하면 어느 쪽이 정본인지 갈린다.
+- **작업이 끝나면 GitHub에 푸시한다** (`origin` = minsuquant-cloud/jeongga_hbm_etf).
+  로컬에만 쌓아두지 않는다 — 노트북 이관 중에 유실될 여지를 없앤다.
+
 ## 자주 쓰는 명령어
 
 ```powershell
