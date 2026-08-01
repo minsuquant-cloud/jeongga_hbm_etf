@@ -15,3 +15,6 @@ notebooks/00_concept_check.ipynb
 # EDGAR 원문 캐시·해외 판정 카드 자동 생성물(global_evidence.py) — 커밋하지 않는다
 docs_cache/edgar/
 etf/evidence_global/
+
+# 스케줄 실행 로그 (JGHBM_daily) — 산출물이 기록이므로 로그는 커밋하지 않는다
+etf/output/run_all.log
