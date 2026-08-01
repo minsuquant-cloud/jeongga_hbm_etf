@@ -1,0 +1,49 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JGHBM 일일 리포트 2026-07-31</title><style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1a1a1a;--dim:#666;--line:#e3e7ee;
+      --navy:#12213f;--red:#b3261e;--green:#1e7b45;--amber:#b4530a}
+@media(prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1c1f26;--ink:#e8eaed;
+      --dim:#9aa0a6;--line:#2c313a;--navy:#8fa8d8}}
+*{box-sizing:border-box}
+body{margin:0;padding:24px;background:var(--bg);color:var(--ink);
+     font-family:"Malgun Gothic","Segoe UI",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:860px;margin:0 auto}
+h1{font-size:20px;margin:0 0 4px;color:var(--navy)}
+.sub{color:var(--dim);font-size:13px;margin-bottom:18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;
+      padding:16px 18px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .lab{font-size:12px;color:var(--dim)}
+.kpi .val{font-size:21px;font-weight:700;margin-top:2px}
+.kpi .dlt{font-size:12px;margin-top:2px}
+.up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--dim)}
+h2{font-size:14px;margin:0 0 10px;color:var(--navy)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--dim);font-weight:600;font-size:12px}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}
+.ok{background:rgba(30,123,69,.14);color:var(--green)}
+.warn{background:rgba(180,83,10,.14);color:var(--amber)}
+.bad{background:rgba(179,38,30,.14);color:var(--red)}
+.note{font-size:12px;color:var(--dim);margin-top:10px}
+.scroll{overflow-x:auto}
+</style></head>
+<body><div class="wrap">
+<h1>정가 HBM ETF — 일일 리포트</h1>
+<div class="sub">데이터 기준일 <b>2026-07-31</b> ·
+ 생성 2026-08-01 12:17 · <span class="badge bad">경보 2건</span> <span class="badge warn">미검사 1</span></div>
+<div class="grid"><div class="kpi"><div class="lab">지수</div><div class="val">51,013.1</div><div class="dlt"></div></div><div class="kpi"><div class="lab">일간</div><div class="val">25.38%</div><div class="dlt"></div></div><div class="kpi"><div class="lab">최대낙폭</div><div class="val">-44.9%</div><div class="dlt"></div></div><div class="kpi"><div class="lab">HBM 순도</div><div class="val">29.81%</div><div class="dlt"></div></div><div class="kpi"><div class="lab">용량(정규장)</div><div class="val">1,692억</div><div class="dlt"></div></div><div class="kpi"><div class="lab">추적오차 12.5y</div><div class="val">79.0bp</div><div class="dlt"></div></div><div class="kpi"><div class="lab">권장 CU</div><div class="val">30억</div><div class="dlt"></div></div><div class="kpi"><div class="lab">개인복제 100bp</div><div class="val">38,395만원</div><div class="dlt"></div></div></div>
+<div class="card"><h2>상장요건</h2>
+ <div>[R1] PASS · [R2] PASS · [R3] PASS</div></div>
+<div class="card"><h2>재무 건강 경보</h2><table><tr><th>종목</th><th>구분</th><th>경보</th></tr><tr><td>오로스테크놀로지</td><td>편입</td><td>⛔4분기연속적자</td></tr><tr><td>SFA반도체</td><td>관찰</td><td>⛔4분기연속적자</td></tr></table><div class="note">❔ 미검사: MU — 해외 편입분은 국내 재무·가격 패널 밖이라 검사 자체가 안 된다. '이상 없음'이 아니다.</div></div>
+<div class="card"><h2>리밸런싱 제안</h2><span class="badge ok">변경 제안 없음 (현행 유지)</span><div class="note">제안일 뿐 정본이 아니다 — 승인해야 반영된다. 파일: rebalance_proposal_20260731_diff.csv</div></div>
+<div class="card"><h2>최근 10일 추이</h2><div class="scroll">
+ <table><tr><th>기준일</th><th>지수</th><th>일간(%)</th><th>순도(%)</th><th>용량(억)</th><th>CU(억)</th><th>경보</th></tr><tr><td>2026-07-31</td><td class="num">51,013.1</td><td class="num">25.4</td><td class="num">29.8</td><td class="num">1692</td><td class="num">30</td><td class="num">2</td></tr></table></div>
+ <div class="note">변화 화살표는 전일 대비다. CU·복제금액은 정수 주 격자라
+ 가격이 조금만 움직여도 답이 튄다 — 자릿수로 읽을 것.</div></div>
+<div class="note">수익률은 성과 주장에 쓰지 않는다(소급 구성이라 look-ahead 존재).
+ 믿을 수 있는 것은 낙폭·용량·드래그다. 상세는 etf/output/*.csv 참조.</div>
+</div></body></html>

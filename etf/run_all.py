@@ -61,6 +61,9 @@ STEPS = [
     ("용량",               "run_capacity.py",       True,  False),
     ("CU 설계",            "run_cu.py",             True,  False),
     ("벤치마크(KRX)",      "run_benchmark.py",      True,  True),
+    # 마지막 — 위 산출물을 읽어 사람이 볼 HTML 한 장을 만든다.
+    # 앞 단계가 일부 실패해도 읽을 수 있는 만큼은 보여주므로 실패 허용.
+    ("일일 리포트",        "make_daily_report.py",  False, True),
 ]
 
 # 여기 없는 러너는 의도적으로 제외한 것이다:
@@ -173,6 +176,10 @@ def main() -> int:
     else:
         print("설계 검증 산출물이 전부 갱신됐습니다. 설계서 PDF는 "
               "make_pdf_etf.py로 별도 재생성(하드코딩이라 수동 동기화).")
+    rep = os.path.join(BASE, "etf", "output", "daily_report.html")
+    if os.path.exists(rep):
+        print(f"\n📄 오늘 요약 한 장: {rep}")
+        print("   (브라우저로 열면 된다 — 외부 요청 없는 자립형 HTML)")
     return 1 if n_fail else 0
 
 
