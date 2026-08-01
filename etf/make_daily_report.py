@@ -113,7 +113,33 @@ def collect() -> dict:
     d.update(_safe("rebalance_proposal", _reb, {}) or {})
 
     d["생성"] = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # 데이터 신선도 — 자동 실행 체인이 끊기면 이 리포트는 조용히 어제 숫자를
+    # 계속 보여준다. 사람이 매일 들여다보지 않아도 알아채도록 크게 표시한다.
+    # (D:\data\_live는 JVS_Daily 20:00이 갱신하고 이 레포는 21:00에 읽는다.
+    #  JVS가 주중만 돌므로 주말·공휴일에 뒤처지는 것은 정상이다.)
+    d["_신선도"] = _freshness(d.get("기준일"))
     return d
+
+
+def _freshness(basis: str | None) -> dict:
+    """기준일이 오늘로부터 며칠 전인지 + 그게 정상인지 판정."""
+    if not basis:
+        return {"등급": "unknown", "말": "데이터 기준일을 읽지 못했다"}
+    b = dt.date.fromisoformat(basis)
+    today = dt.date.today()
+    gap = (today - b).days
+    # 그 사이의 영업일 수(주말 제외 근사 — 공휴일은 세지 않으므로 보수적)
+    bdays = sum(1 for i in range(1, gap + 1)
+                if (b + dt.timedelta(days=i)).weekday() < 5)
+    if bdays <= 1:
+        return {"등급": "ok", "말": f"최신 ({gap}일 전 종가)"}
+    if bdays == 2:
+        return {"등급": "warn",
+                "말": f"{gap}일 전 데이터 — 갱신이 하루 밀렸을 수 있다"}
+    return {"등급": "bad",
+            "말": f"{gap}일 전 데이터 (영업일 {bdays}일 경과) — "
+                  "자동 갱신이 멈췄을 가능성이 높다. JVS_Daily 20:00 실행 여부 확인"}
 
 
 # ── 이력 (전일 대비용) ──────────────────────────────────────────────────
@@ -209,6 +235,17 @@ def build_html(d: dict, h: pd.DataFrame) -> str:
     if n_unk:
         status += f' <span class="badge warn">미검사 {n_unk}</span>'
 
+    fr = d.get("_신선도") or {"등급": "unknown", "말": ""}
+    fcls = {"ok": "ok", "warn": "warn"}.get(fr["등급"], "bad")
+    fresh = f'<span class="badge {fcls}">{html.escape(fr["말"])}</span>'
+    stale_banner = "" if fr["등급"] == "ok" else (
+        f'<div class="card" style="border-color:var(--amber)">'
+        f'<h2>⚠ 데이터 신선도</h2><div>{html.escape(fr["말"])}</div>'
+        f'<div class="note">아래 숫자는 <b>{html.escape(str(d.get("기준일")))}</b> '
+        "종가 기준이다. 자동 갱신 순서: JVS_Daily 20:00이 D:\\data\\_live를 "
+        "갱신하고 이 리포트는 21:00에 읽는다(주말·공휴일에 뒤처지는 것은 정상).</div>"
+        "</div>")
+
     kpis = "".join([
         kpi("지수", d.get("지수"), delta(h, "지수")),
         kpi("일간", d.get("일간(%)"), "", "%"),
@@ -267,8 +304,9 @@ def build_html(d: dict, h: pd.DataFrame) -> str:
 <title>JGHBM 일일 리포트 {d.get('기준일') or ''}</title><style>{CSS}</style></head>
 <body><div class="wrap">
 <h1>정가 HBM ETF — 일일 리포트</h1>
-<div class="sub">데이터 기준일 <b>{d.get('기준일') or '—'}</b> ·
+<div class="sub">데이터 기준일 <b>{d.get('기준일') or '—'}</b> {fresh} ·
  생성 {d.get('생성')} · {status}</div>
+{stale_banner}
 <div class="grid">{kpis}</div>
 <div class="card"><h2>상장요건</h2>
  <div>{html.escape(str(d.get('상장요건') or '—'))}</div></div>

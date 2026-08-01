@@ -103,6 +103,36 @@ if (mdr.OUT / "compliance_report.csv").exists():
 else:
     check("산출물 스모크(건너뜀 — run_all 미실행)", True)
 
+# ── 7) 데이터 신선도 — 체인이 끊기면 알아채야 한다 ────────────────────
+# D:\data\_live는 JVS_Daily(20:00, 주중)가 갱신하고 이 레포는 21:00에 읽는다.
+# 그 체인이 끊기면 리포트가 조용히 어제 숫자를 계속 보여주므로 등급으로 드러낸다.
+import datetime as _dt  # noqa: E402
+
+_today = _dt.date.today()
+
+
+def _fr(days_ago):
+    return mdr._freshness((_today - _dt.timedelta(days=days_ago)).isoformat())
+
+
+check("기준일 없으면 unknown", mdr._freshness(None)["등급"] == "unknown")
+check("어제 데이터는 정상", _fr(1)["등급"] == "ok", _fr(1))
+# 영업일 기준이라 주말을 끼면 달력일이 늘어도 정상이어야 한다
+mon = _today - _dt.timedelta(days=(_today.weekday() - 0) % 7)   # 이번 주 월요일
+fri_before = mon - _dt.timedelta(days=3)                        # 그 전 금요일
+check("월요일에 직전 금요일 데이터는 정상(주말 제외)",
+      mdr._freshness(fri_before.isoformat())["등급"] == "ok"
+      if _today.weekday() == 0 else True)
+check("영업일 3일 이상 경과는 bad", _fr(7)["등급"] == "bad", _fr(7))
+check("bad 등급은 원인 안내 포함", "JVS_Daily" in _fr(7)["말"], _fr(7)["말"])
+
+# 신선도가 나쁘면 HTML에 배너가 뜬다
+d_stale = dict(d, _신선도={"등급": "bad", "말": "9일 전 데이터 — 자동 갱신 멈춤"})
+h_stale = mdr.build_html(d_stale, hist)
+check("stale이면 배너 표시", "데이터 신선도" in h_stale and "9일 전" in h_stale)
+d_ok = dict(d, _신선도={"등급": "ok", "말": "최신 (1일 전 종가)"})
+check("정상이면 배너 없음", "데이터 신선도" not in mdr.build_html(d_ok, hist))
+
 print()
 print("전부 통과" if ok else "실패 있음")
 sys.exit(0 if ok else 1)
