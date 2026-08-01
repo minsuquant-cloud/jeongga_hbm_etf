@@ -127,6 +127,38 @@ mismatch = {c: (n, judged_names.get(c)) for c, n in WATCHLIST.items()
             if judged_names.get(c) != n}
 check("관찰종목 이름이 판정 CSV와 일치", not mismatch, mismatch)
 
+# ── 9) 건강 경보: 검사 못 한 것을 ✅로 보고하지 않는다 ────────────────
+# 회귀(2026-08-01): 해외 편입분(MU)은 국내 재무·가격 패널에 없어 전 항목이
+# NaN인데 경보란에 ✅가 떠서 "확인했고 괜찮다"로 오독됐다.
+import subprocess  # noqa: E402
+
+rc = subprocess.run(
+    [os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                  ".venv", "Scripts", "python.exe"),
+     os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                  "etf", "run_health.py")],
+    capture_output=True, text=True, encoding="utf-8", errors="replace",
+    env=dict(os.environ, PYTHONUTF8="1"))
+hp = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                  "etf", "output", "health_report.csv")
+if os.path.exists(hp):
+    h = pd.read_csv(hp, encoding="utf-8-sig")
+    h["코드"] = h["코드"].astype(str)
+    fr = h[~h["코드"].str.isdigit()]          # 해외 티커 행
+    check("해외 편입분이 리포트에 있다", len(fr) > 0, h["코드"].tolist())
+    if len(fr):
+        check("재무 NaN인 종목은 ✅가 아니다",
+              not fr["경보"].str.contains("✅").any(), fr["경보"].tolist())
+        check("미검사 표기(❔)를 쓴다",
+              fr["경보"].str.contains("❔").all(), fr["경보"].tolist())
+    # 검사된 종목은 ✅ 또는 ⛔ 중 하나여야 한다
+    kr = h[h["코드"].str.isdigit()]
+    check("국내 종목은 전부 판정됨(❔ 없음)",
+          not kr["경보"].str.contains("❔").any(),
+          kr.loc[kr["경보"].str.contains("❔"), "종목명"].tolist())
+else:
+    check("health_report.csv 생성", False, rc.stderr[:80])
+
 print()
 print("전부 통과" if ok else "실패 있음")
 sys.exit(0 if ok else 1)

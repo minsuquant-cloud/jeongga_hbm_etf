@@ -85,13 +85,26 @@ def main() -> int:
         if debt_ratio > 300:
             alerts.append("⚠부채비율300%+")
 
+        # 검사 못 한 것을 '이상 없음'으로 보고하지 않는다 — 해외 편입분(MU)은
+        # 국내 재무·가격 패널에 없어 전 항목이 NaN인데, 그대로 두면 ✅가 떠서
+        # "확인했고 괜찮다"로 오독된다(2026-08-01 발견). fail-closed 표기.
+        unchecked = []
+        if len(eq) == 0:
+            unchecked.append("재무")
+        if last_raw != last_raw:
+            unchecked.append("가격")
+        if halt != halt:
+            unchecked.append("거래량")
+        status = " ".join(alerts) if alerts else (
+            "❔미검사(" + "·".join(unchecked) + ")" if unchecked else "✅")
+
         rows.append({"코드": c, "종목명": name, "구분": role,
                      "최근분기": str(eq.index[-1])[:10] if len(eq) else "-",
                      "자본총계(억)": round(eq.iloc[-1] / 1e5) if len(eq) else None,
                      "부채비율(%)": round(debt_ratio) if debt_ratio == debt_ratio else None,
                      "영업이익_최근4Q적자수": int((op.iloc[-4:] < 0).sum()) if len(op) >= 4 else None,
                      "무거래일비중": round(halt, 3) if halt == halt else None,
-                     "경보": " ".join(alerts) or "✅"})
+                     "경보": status})
 
     df = pd.DataFrame(rows)
     OUT.mkdir(parents=True, exist_ok=True)
@@ -101,7 +114,11 @@ def main() -> int:
           f"(재무 최근분기 + 가격 _live 오늘까지)\n")
     print(df.to_string(index=False))
     n_bad = df["경보"].str.contains("⛔").sum()
-    print(f"\n{'⛔ 경보 ' + str(n_bad) + '건 — 수시변경 검토' if n_bad else '✅ 전 종목 이상 없음'}"
+    n_unk = int(df["경보"].str.contains("❔").sum())
+    if n_unk:
+        print(f"\n❔ 미검사 {n_unk}종목 — 국내 재무·가격 패널 밖(해외 편입분). "
+              "'이상 없음'이 아니라 '확인 못 함'이다.")
+    print(f"\n{'⛔ 경보 ' + str(n_bad) + '건 — 수시변경 검토' if n_bad else '✅ 검사한 종목은 이상 없음'}"
           f"  |  저장: output/health_report.csv")
     return 1 if n_bad else 0
 
