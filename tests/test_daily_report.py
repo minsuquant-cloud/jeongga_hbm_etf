@@ -45,16 +45,40 @@ try:
 
     # ── 2) delta: 전일 대비 ───────────────────────────────────────────
     check("상승 화살표", "▲" in mdr.delta(h3, "지수"), mdr.delta(h3, "지수"))
+    check("하락 화살표", "▼" in mdr.delta(
+        pd.DataFrame({"지수": [100.0, 90.0]}), "지수"))
     flat = pd.DataFrame({"지수": [100.0, 100.0]})
-    check("변화 없으면 —", "flat" in mdr.delta(flat, "지수"))
-    check("1행이면 빈 문자열", mdr.delta(h1, "지수") == "")
+    check("변화 없으면 '변화 없음'", "변화 없음" in mdr.delta(flat, "지수"))
+    # 빈칸은 "안 변했다"로 오독된다 — 비교가 안 된 경우는 그렇게 적는다
+    check("1행이면 '첫 기록'", "첫 기록" in mdr.delta(h1, "지수"),
+          mdr.delta(h1, "지수"))
     check("없는 컬럼이면 빈 문자열", mdr.delta(h3, "없는칼럼") == "")
     nan_h = pd.DataFrame({"지수": [None, 100.0]})
-    check("이전 값 결측이면 —",
-          mdr.delta(nan_h, "지수") in ("", '<span class="flat">—</span>'),
-          mdr.delta(nan_h, "지수"))
+    check("이전 값 결측이면 '비교 불가'(변화 없음과 구분)",
+          "비교 불가" in mdr.delta(nan_h, "지수"), mdr.delta(nan_h, "지수"))
+    # 표시 단위가 이력과 다를 때(만원→억) 화살표 숫자도 같은 단위여야 한다
+    scaled = mdr.delta(pd.DataFrame({"복제100bp(만원)": [10000.0, 30000.0]}),
+                       "복제100bp(만원)", 1 / 10000)
+    check("scale 적용(만원→억)", "2.00" in scaled, scaled)
 finally:
     mdr.HISTORY = orig_hist
+
+# ── 2b) sparkline: 인라인 SVG (외부 라이브러리 0) ─────────────────────
+check("점이 모자라면 안 그린다", mdr.sparkline([1.0, 2.0]) == "")
+up = mdr.sparkline([1.0, 2.0, 3.0, 5.0])
+dn = mdr.sparkline([5.0, 3.0, 2.0, 1.0])
+check("상승은 기본 색", 'class="spark"' in up)
+check("하락은 dn 클래스", 'class="spark dn"' in dn, dn[:40])
+check("스파크도 자립형(외부 요청 없음)",
+      not re.search(r'https?://|src=', up))
+check("평평한 값도 0으로 나누지 않는다", "polyline" in mdr.sparkline([7.0] * 5))
+# 끝점 원이 viewBox 밖으로 나가면 잘려 보인다 — 좌우 여백 확인
+_pts = re.search(r'class="sl" points="([^"]+)"', up).group(1).split()
+_xs = [float(p.split(",")[0]) for p in _pts]
+_ys = [float(p.split(",")[1]) for p in _pts]
+check("x가 viewBox 안(끝점 잘림 없음)", 0 < min(_xs) and max(_xs) < 720,
+      (min(_xs), max(_xs)))
+check("y가 viewBox 안", 0 < min(_ys) and max(_ys) < 90, (min(_ys), max(_ys)))
 
 # ── 3) HTML: 자립형 + 이스케이프 ──────────────────────────────────────
 d = {"기준일": "2026-07-31", "생성": "2026-08-01 12:00",

@@ -1,50 +1,135 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>JGHBM 일일 리포트 2026-07-31</title><style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1a1a1a;--dim:#666;--line:#e3e7ee;
-      --navy:#12213f;--red:#b3261e;--green:#1e7b45;--amber:#b4530a}
-@media(prefers-color-scheme:dark){:root{--bg:#14161a;--card:#1c1f26;--ink:#e8eaed;
-      --dim:#9aa0a6;--line:#2c313a;--navy:#8fa8d8}}
+:root{--bg:#eef1f6;--card:#fff;--ink:#101828;--dim:#667085;--line:#e4e8ef;
+      --navy:#14264a;--accent:#2f6df6;--red:#c0392b;--green:#12805c;--amber:#b26a00;
+      --shadow:0 1px 2px rgba(16,24,40,.06),0 8px 24px -12px rgba(16,24,40,.18);
+      --hero:linear-gradient(135deg,#14264a 0%,#22437f 55%,#2f6df6 140%)}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1216;--card:#181c23;--ink:#e6e9ee;
+      --dim:#98a2b3;--line:#272d38;--navy:#a8c0ee;--accent:#6f9bff;
+      --red:#f07167;--green:#4fc79a;--amber:#e0a458;
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.7);
+      --hero:linear-gradient(135deg,#101b33 0%,#1b3059 55%,#264a8f 140%)}}
 *{box-sizing:border-box}
-body{margin:0;padding:24px;background:var(--bg);color:var(--ink);
-     font-family:"Malgun Gothic","Segoe UI",system-ui,sans-serif;line-height:1.6}
-.wrap{max-width:860px;margin:0 auto}
-h1{font-size:20px;margin:0 0 4px;color:var(--navy)}
-.sub{color:var(--dim);font-size:13px;margin-bottom:18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;
-      padding:16px 18px;margin-bottom:14px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-.kpi .lab{font-size:12px;color:var(--dim)}
-.kpi .val{font-size:21px;font-weight:700;margin-top:2px}
-.kpi .dlt{font-size:12px;margin-top:2px}
-.up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--dim)}
-h2{font-size:14px;margin:0 0 10px;color:var(--navy)}
+body{margin:0;padding:28px 20px 40px;background:var(--bg);color:var(--ink);
+     font-family:"Pretendard","Malgun Gothic","Segoe UI",system-ui,sans-serif;
+     line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:920px;margin:0 auto}
+
+/* 머리 — 날짜와 상태를 한눈에 */
+.hero{background:var(--hero);border-radius:16px;padding:22px 24px;color:#fff;
+      box-shadow:var(--shadow);margin-bottom:18px}
+.hero .eyebrow{font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+      opacity:.72;font-weight:600}
+.hero h1{font-size:24px;margin:2px 0 12px;font-weight:700;letter-spacing:-.02em}
+.hero .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:13px}
+.hero .basis{background:rgba(255,255,255,.14);border-radius:99px;
+      padding:3px 12px;font-weight:600}
+.hero .gen{opacity:.66;font-size:12px;margin-left:auto}
+
+.sec{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--dim);
+     text-transform:uppercase;margin:20px 2px 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+      padding:18px 20px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card h2{font-size:15px;margin:0 0 12px;color:var(--navy);font-weight:700;
+      display:flex;align-items:center;gap:8px}
+
+/* KPI */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;
+     padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+     transition:transform .12s ease,box-shadow .12s ease}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 2px 4px rgba(16,24,40,.08),
+     0 16px 32px -14px rgba(16,24,40,.3)}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+     background:var(--accent);opacity:.85}
+.kpi.k-red::before{background:var(--red)}
+.kpi.k-green::before{background:var(--green)}
+.kpi.k-amber::before{background:var(--amber)}
+.kpi .lab{font-size:12px;color:var(--dim);font-weight:600}
+.kpi .val{font-size:26px;font-weight:700;margin-top:4px;letter-spacing:-.02em;
+     font-variant-numeric:tabular-nums;line-height:1.2}
+.kpi .val .u{font-size:14px;font-weight:600;color:var(--dim);margin-left:2px}
+.kpi .dlt{font-size:12px;margin-top:4px;min-height:18px}
+.kpi.k-red .val{color:var(--red)}.kpi.k-green .val{color:var(--green)}
+.up{color:var(--green);font-weight:600}.down{color:var(--red);font-weight:600}
+.flat{color:var(--dim)}
+
+/* 스파크라인 */
+.spark{width:100%;height:auto;display:block;margin:2px 0 6px}
+.spark .sl{fill:none;stroke:var(--accent);stroke-width:2;
+     stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+.spark .sa{fill:var(--accent);opacity:.10;stroke:none}
+.spark .sd{fill:var(--accent);stroke:var(--card);stroke-width:2}
+.spark.dn .sl,.spark.dn .sd{stroke:var(--red)}
+.spark.dn .sl{stroke:var(--red)}.spark.dn .sa{fill:var(--red)}
+.spark.dn .sd{fill:var(--red)}
+.axis{display:flex;justify-content:space-between;font-size:11px;color:var(--dim);
+     font-variant-numeric:tabular-nums}
+
+/* 표 */
 table{width:100%;border-collapse:collapse;font-size:13px}
-th,td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:left}
-th{color:var(--dim);font-weight:600;font-size:12px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--dim);font-weight:600;font-size:11.5px;letter-spacing:.04em;
+   text-transform:uppercase;background:rgba(127,127,127,.045)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(127,127,127,.04)}
 td.num{text-align:right;font-variant-numeric:tabular-nums}
-.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}
-.ok{background:rgba(30,123,69,.14);color:var(--green)}
-.warn{background:rgba(180,83,10,.14);color:var(--amber)}
-.bad{background:rgba(179,38,30,.14);color:var(--red)}
-.note{font-size:12px;color:var(--dim);margin-top:10px}
+td.strong{font-weight:600}
+
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;
+     border-radius:99px;font-size:12px;font-weight:700;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;
+     background:currentColor}
+.ok{background:rgba(18,128,92,.14);color:var(--green)}
+.warn{background:rgba(178,106,0,.16);color:var(--amber)}
+.bad{background:rgba(192,57,43,.14);color:var(--red)}
+.hero .badge{background:rgba(255,255,255,.16);color:#fff}
+.hero .badge.warn{background:rgba(255,196,87,.24);color:#ffd88a}
+.hero .badge.bad{background:rgba(255,120,105,.26);color:#ffc2b8}
+.note{font-size:12px;color:var(--dim);margin-top:12px;line-height:1.55}
 .scroll{overflow-x:auto}
+.foot{text-align:center;font-size:11.5px;color:var(--dim);margin-top:22px;
+     padding-top:16px;border-top:1px solid var(--line)}
+code{background:rgba(127,127,127,.12);border-radius:5px;padding:1px 5px;
+     font-family:Consolas,"D2Coding",monospace;font-size:11px}
+@media print{body{background:#fff;padding:0}.card,.kpi{box-shadow:none}
+     .kpi:hover{transform:none}}
+@media(max-width:520px){.hero h1{font-size:20px}.hero .gen{margin-left:0;width:100%}}
 </style></head>
 <body><div class="wrap">
-<h1>정가 HBM ETF — 일일 리포트</h1>
-<div class="sub">데이터 기준일 <b>2026-07-31</b> <span class="badge ok">최신 (1일 전 종가)</span> ·
- 생성 2026-08-01 12:30 · <span class="badge bad">경보 2건</span> <span class="badge warn">미검사 1</span></div>
 
-<div class="grid"><div class="kpi"><div class="lab">지수</div><div class="val">51,013.1</div><div class="dlt"></div></div><div class="kpi"><div class="lab">일간</div><div class="val">25.38%</div><div class="dlt"></div></div><div class="kpi"><div class="lab">최대낙폭</div><div class="val">-44.9%</div><div class="dlt"></div></div><div class="kpi"><div class="lab">HBM 순도</div><div class="val">29.81%</div><div class="dlt"></div></div><div class="kpi"><div class="lab">용량(정규장)</div><div class="val">1,692억</div><div class="dlt"></div></div><div class="kpi"><div class="lab">추적오차 12.5y</div><div class="val">79.0bp</div><div class="dlt"></div></div><div class="kpi"><div class="lab">권장 CU</div><div class="val">30억</div><div class="dlt"></div></div><div class="kpi"><div class="lab">개인복제 100bp</div><div class="val">38,395만원</div><div class="dlt"></div></div></div>
-<div class="card"><h2>상장요건</h2>
- <div>[R1] PASS · [R2] PASS · [R3] PASS</div></div>
-<div class="card"><h2>재무 건강 경보</h2><table><tr><th>종목</th><th>구분</th><th>경보</th></tr><tr><td>오로스테크놀로지</td><td>편입</td><td>⛔4분기연속적자</td></tr><tr><td>SFA반도체</td><td>관찰</td><td>⛔4분기연속적자</td></tr></table><div class="note">❔ 미검사: MU — 해외 편입분은 국내 재무·가격 패널 밖이라 검사 자체가 안 된다. '이상 없음'이 아니다.</div></div>
-<div class="card"><h2>리밸런싱 제안</h2><span class="badge ok">변경 제안 없음 (현행 유지)</span><div class="note">제안일 뿐 정본이 아니다 — 승인해야 반영된다. 파일: rebalance_proposal_20260731_diff.csv</div></div>
-<div class="card"><h2>최근 10일 추이</h2><div class="scroll">
- <table><tr><th>기준일</th><th>지수</th><th>일간(%)</th><th>순도(%)</th><th>용량(억)</th><th>CU(억)</th><th>경보</th></tr><tr><td>2026-07-31</td><td class="num">51,013.1</td><td class="num">25.4</td><td class="num">29.8</td><td class="num">1692</td><td class="num">30</td><td class="num">2</td></tr></table></div>
+<div class="hero">
+ <div class="eyebrow">JGHBM · Daily</div>
+ <h1>정가 HBM ETF 일일 리포트</h1>
+ <div class="meta">
+  <span class="basis">기준일 2026-07-31</span>
+  <span class="badge ok">최신 (1일 전 종가)</span><span class="badge bad">경보 2건</span> <span class="badge warn">미검사 1</span>
+  <span class="gen">생성 2026-08-01 13:17</span>
+ </div>
+</div>
+
+
+<div class="sec">시장</div>
+<div class="grid"><div class="kpi"><div class="lab">지수</div><div class="val">51,013.1</div><div class="dlt"><span class="flat">첫 기록</span></div></div><div class="kpi k-green"><div class="lab">전일 대비</div><div class="val">+25.38<span class="u">%</span></div><div class="dlt"></div></div><div class="kpi k-red"><div class="lab">최대낙폭</div><div class="val">-44.9<span class="u">%</span></div><div class="dlt"></div></div><div class="kpi"><div class="lab">HBM 순도</div><div class="val">29.81<span class="u">%</span></div><div class="dlt"><span class="flat">첫 기록</span></div></div></div>
+<div class="card"><h2>📈 지수 추이 <span class="badge ok">126거래일 +88.3%</span></h2><svg class="spark" viewBox="0 0 720 90" role="img" aria-label="지수 추이"><polygon class="sa" points="7,90 7.0,83.0 12.6,80.8 18.3,78.5 23.9,76.1 29.6,74.5 35.2,78.6 40.9,74.9 46.5,74.5 52.2,77.9 57.8,77.4 63.5,74.5 69.1,75.9 74.8,76.8 80.4,74.2 86.1,74.6 91.7,72.5 97.4,72.1 103.0,72.5 108.7,71.3 114.3,71.2 120.0,65.3 125.6,63.5 131.3,66.7 136.9,72.0 142.6,61.4 148.2,59.8 153.8,65.2 159.5,60.5 165.1,61.8 170.8,62.1 176.4,63.2 182.1,62.5 187.7,62.8 193.4,60.0 199.0,61.8 204.7,59.8 210.3,63.4 216.0,61.9 221.6,62.3 227.3,65.6 232.9,66.6 238.6,69.6 244.2,73.1 249.9,68.2 255.5,70.9 261.2,69.7 266.8,69.8 272.5,69.0 278.1,64.1 283.8,64.4 289.4,63.4 295.0,63.9 300.7,62.4 306.3,59.0 312.0,58.6 317.6,59.6 323.3,57.0 328.9,52.5 334.6,52.1 340.2,52.0 345.9,49.8 351.5,45.0 357.2,44.7 362.8,46.2 368.5,46.4 374.1,43.1 379.8,37.8 385.4,35.3 391.1,35.4 396.7,27.7 402.4,30.3 408.0,25.9 413.7,24.5 419.3,34.3 425.0,32.0 430.6,36.1 436.2,35.5 441.9,27.9 447.5,23.0 453.2,19.3 458.8,16.5 464.5,20.1 470.1,21.1 475.8,19.9 481.4,17.4 487.1,8.6 492.7,18.7 498.4,30.8 504.0,20.6 509.7,23.2 515.3,16.4 521.0,10.4 526.6,9.6 532.3,8.8 537.9,9.5 543.6,8.2 549.2,9.4 554.9,7.0 560.5,16.1 566.2,18.4 571.8,15.9 577.4,16.2 583.1,17.5 588.7,13.2 594.4,10.1 600.0,24.1 605.7,23.9 611.3,25.8 617.0,31.7 622.6,37.9 628.3,33.9 633.9,29.4 639.6,35.4 645.2,32.8 650.9,22.3 656.5,31.2 662.2,37.0 667.8,36.1 673.5,36.4 679.1,33.2 684.8,40.5 690.4,39.5 696.1,49.9 701.7,56.7 707.4,60.7 713.0,43.8 713,90"/><polyline class="sl" points="7.0,83.0 12.6,80.8 18.3,78.5 23.9,76.1 29.6,74.5 35.2,78.6 40.9,74.9 46.5,74.5 52.2,77.9 57.8,77.4 63.5,74.5 69.1,75.9 74.8,76.8 80.4,74.2 86.1,74.6 91.7,72.5 97.4,72.1 103.0,72.5 108.7,71.3 114.3,71.2 120.0,65.3 125.6,63.5 131.3,66.7 136.9,72.0 142.6,61.4 148.2,59.8 153.8,65.2 159.5,60.5 165.1,61.8 170.8,62.1 176.4,63.2 182.1,62.5 187.7,62.8 193.4,60.0 199.0,61.8 204.7,59.8 210.3,63.4 216.0,61.9 221.6,62.3 227.3,65.6 232.9,66.6 238.6,69.6 244.2,73.1 249.9,68.2 255.5,70.9 261.2,69.7 266.8,69.8 272.5,69.0 278.1,64.1 283.8,64.4 289.4,63.4 295.0,63.9 300.7,62.4 306.3,59.0 312.0,58.6 317.6,59.6 323.3,57.0 328.9,52.5 334.6,52.1 340.2,52.0 345.9,49.8 351.5,45.0 357.2,44.7 362.8,46.2 368.5,46.4 374.1,43.1 379.8,37.8 385.4,35.3 391.1,35.4 396.7,27.7 402.4,30.3 408.0,25.9 413.7,24.5 419.3,34.3 425.0,32.0 430.6,36.1 436.2,35.5 441.9,27.9 447.5,23.0 453.2,19.3 458.8,16.5 464.5,20.1 470.1,21.1 475.8,19.9 481.4,17.4 487.1,8.6 492.7,18.7 498.4,30.8 504.0,20.6 509.7,23.2 515.3,16.4 521.0,10.4 526.6,9.6 532.3,8.8 537.9,9.5 543.6,8.2 549.2,9.4 554.9,7.0 560.5,16.1 566.2,18.4 571.8,15.9 577.4,16.2 583.1,17.5 588.7,13.2 594.4,10.1 600.0,24.1 605.7,23.9 611.3,25.8 617.0,31.7 622.6,37.9 628.3,33.9 633.9,29.4 639.6,35.4 645.2,32.8 650.9,22.3 656.5,31.2 662.2,37.0 667.8,36.1 673.5,36.4 679.1,33.2 684.8,40.5 690.4,39.5 696.1,49.9 701.7,56.7 707.4,60.7 713.0,43.8"/><circle class="sd" cx="713.0" cy="43.8" r="4"/></svg><div class="axis"><span>2026-01-26</span><span>저 27,096 · 고 73,430</span><span>2026-07-31</span></div></div>
+
+<div class="sec">설계 지표</div>
+<div class="grid"><div class="kpi"><div class="lab">용량 (정규장)</div><div class="val">1,692<span class="u">억</span></div><div class="dlt"><span class="flat">첫 기록</span></div></div><div class="kpi"><div class="lab">추적오차 12.5y</div><div class="val">79.0<span class="u">bp</span></div><div class="dlt"><span class="flat">첫 기록</span></div></div><div class="kpi"><div class="lab">권장 CU</div><div class="val">30<span class="u">억</span></div><div class="dlt"><span class="flat">첫 기록</span></div></div><div class="kpi"><div class="lab">개인복제 100bp</div><div class="val">3.84<span class="u">억</span></div><div class="dlt"><span class="flat">첫 기록</span></div></div></div>
+
+<div class="sec">점검</div>
+<div class="card"><h2>✅ 상장요건</h2><div class="scroll"><table><thead><tr><th>요건</th><th>기준</th><th>실측</th><th>판정</th></tr></thead><tbody><tr><td class="strong">[R1] 구성종목 수 ≥ 10 (상장규정)</td><td class="num">≥ 10</td><td class="num">13</td><td><span class="badge ok">PASS</span></td></tr><tr><td class="strong">[R2] 1종목 최대 비중 ≤ 30%</td><td class="num">≤ 30%</td><td class="num">18.00% (한미반도체)</td><td><span class="badge ok">PASS</span></td></tr><tr><td class="strong">[R3] 소수종목 테마형 20% 상한 (강화 방침)</td><td class="num">≤ 20%</td><td class="num">18.00% (한미반도체)</td><td><span class="badge ok">PASS</span></td></tr></tbody></table></div></div>
+<div class="card"><h2>🩺 재무 건강 경보</h2><div class="scroll"><table><thead><tr><th>종목</th><th>구분</th><th>경보</th></tr></thead><tbody><tr><td class="strong">오로스테크놀로지</td><td>편입</td><td>⛔4분기연속적자</td></tr><tr><td class="strong">SFA반도체</td><td>관찰</td><td>⛔4분기연속적자</td></tr></tbody></table></div><div class="note">❔ 미검사: MU — 해외 편입분은 국내 재무·가격 패널 밖이라 검사 자체가 안 된다. '이상 없음'이 아니다.</div></div>
+<div class="card"><h2>🔁 리밸런싱 제안</h2><span class="badge ok">변경 제안 없음 (현행 유지)</span><div class="note">제안일 뿐 정본이 아니다 — 승인해야 반영된다. 파일: rebalance_proposal_20260801_diff.csv</div></div>
+
+<div class="sec">이력</div>
+<div class="card"><h2>🗓 최근 10일 추이</h2><div class="scroll">
+ <table><thead><tr><th>기준일</th><th>지수</th><th>일간(%)</th><th>순도(%)</th><th>용량(억)</th><th>CU(억)</th><th>경보</th></tr></thead><tbody><tr><td class="strong">2026-07-31</td><td class="num">51,013.1</td><td class="num">25.4</td><td class="num">29.8</td><td class="num">1692</td><td class="num">30</td><td class="num">2</td></tr></tbody></table></div>
  <div class="note">변화 화살표는 전일 대비다. CU·복제금액은 정수 주 격자라
  가격이 조금만 움직여도 답이 튄다 — 자릿수로 읽을 것.</div></div>
-<div class="note">수익률은 성과 주장에 쓰지 않는다(소급 구성이라 look-ahead 존재).
- 믿을 수 있는 것은 낙폭·용량·드래그다. 상세는 etf/output/*.csv 참조.</div>
+
+<div class="foot">수익률은 성과 주장에 쓰지 않는다 — 소급 구성이라 look-ahead가 있다.
+ 믿을 수 있는 것은 낙폭·용량·드래그다.<br>
+ 상세 수치는 <code>etf/output/*.csv</code> · 매일 21:00 자동 갱신
+ (<code>run_all.py</code>)</div>
 </div></body></html>
