@@ -159,6 +159,25 @@ if os.path.exists(hp):
 else:
     check("health_report.csv 생성", False, rc.stderr[:80])
 
+# ── 10) 구성 진입점 게이트 — 정기변경 때 한쪽만 바꾸는 사고 방지 ──────
+# run_tracking.CONSTITUENTS와 hist_data.FINAL을 손으로 바꿔야 하는데,
+# 하나만 고치면 러너마다 다른 구성으로 산출된다(정본이 갈리는 사고).
+import etf.run_all as ra  # noqa: E402
+import etf.run_tracking as rt  # noqa: E402
+
+g_ok, g_msg = ra.composition_gate()
+check("현재 두 진입점 일치", g_ok, g_msg)
+_orig = rt.CONSTITUENTS
+try:
+    rt.CONSTITUENTS = _orig.replace("글로벌확정_20260729", "실사확정_20260725")
+    bad_ok, bad_msg = ra.composition_gate()
+    check("불일치를 게이트가 잡는다", not bad_ok, bad_msg)
+    check("불일치 메시지에 양쪽 파일명", "run_tracking" in bad_msg
+          and "hist_data" in bad_msg, bad_msg[:70])
+finally:
+    rt.CONSTITUENTS = _orig
+check("검사 후 원복", ra.composition_gate()[0])
+
 print()
 print("전부 통과" if ok else "실패 있음")
 sys.exit(0 if ok else 1)

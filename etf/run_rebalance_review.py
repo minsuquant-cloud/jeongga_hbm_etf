@@ -164,8 +164,11 @@ def main() -> int:
         shutil.copyfile(src_csv, dst)
         print(f"[승인 반영] {src_csv} → {dst}")
         print("\n남은 절차 (정본 전환 체크리스트 — CLAUDE.md 원칙):")
-        print(f"  1. run_tracking.CONSTITUENTS · hist_data.FINAL 상수를 "
-              f"'{os.path.basename(dst)}'로 갱신 (코드 변경 = 의도 명시)")
+        print(f"  1. **두 상수를 모두** '{os.path.basename(dst)}'로 갱신 "
+              "(코드 변경 = 의도 명시라 수동이다)")
+        print("       etf/run_tracking.py  CONSTITUENTS")
+        print("       etf/hist_data.py     FINAL")
+        print("     → 한쪽만 바꾸면 run_all.py의 [0a] 게이트가 막는다")
         print("  2. etf/run_all.py 로 산출물 전체 재실행 (같은 날 = 날짜 통일 원칙)")
         print("  3. 커밋 — 구 구성표는 역사 기록으로 보존")
         return 0
@@ -214,7 +217,7 @@ def main() -> int:
     r["proposal"].to_csv(p_prop, index=False, encoding="utf-8-sig")
     r["diff"].to_csv(p_diff, index=False, encoding="utf-8-sig")
     print(f"\n저장: {p_prop}\n      {p_diff}")
-    print("\n⚠ 이 파일은 **제안**이다 — 정본이 아니며 정가로 인계되지 않는다.")
+    print("\n⚠ 이 파일은 **제안**이다 — 승인 전까지 정본이 아니다.")
     print("  승인하려면:  .venv/Scripts/python.exe etf/run_rebalance_review.py "
           f"--approve {p_prop}")
     return 0

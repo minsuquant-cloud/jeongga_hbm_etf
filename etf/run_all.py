@@ -78,6 +78,24 @@ STEPS = [
 #   export_basket        — 승인 게이트 뒤에서만. 자동 실행 금지.
 
 
+def composition_gate() -> tuple[bool, str]:
+    """구성 진입점 두 곳이 같은 구성표를 보는지 확인 — 갈리면 산출이 뒤섞인다.
+
+    정기변경 반영 때 `run_tracking.CONSTITUENTS`와 `hist_data.FINAL`을 손으로
+    바꿔야 하는데(코드 변경 = 의도 명시), 하나만 고치면 러너마다 다른 구성으로
+    산출된다. 리포트는 정상으로 보이는데 숫자만 섞이는, 이 레포가 계속 겪어온
+    '정본이 갈리는 사고'라 실행 전에 막는다.
+    """
+    from etf.hist_data import FINAL
+    from etf.run_tracking import CONSTITUENTS
+    a, b = os.path.basename(CONSTITUENTS), os.path.basename(str(FINAL))
+    if a != b:
+        return False, (f"구성 진입점 불일치 — run_tracking.CONSTITUENTS={a} vs "
+                       f"hist_data.FINAL={b}. 정기변경 반영 때 한쪽만 바꾼 것으로 "
+                       "보인다. 두 상수를 같은 구성표로 맞춘 뒤 다시 실행할 것")
+    return True, f"구성 진입점 일치 ({a})"
+
+
 def eod_gate(force: bool = False) -> tuple[bool, str]:
     """parquet 최신일이 EOD 확정인지 FDR로 대조. (통과 여부, 메시지)."""
     from etf.hist_data import load_composition, load_field
@@ -145,6 +163,11 @@ def main() -> int:
     args = ap.parse_args()
 
     print(f"=== 정가 HBM ETF 설계 검증 전체 재현 ({dt.datetime.now():%Y-%m-%d %H:%M}) ===\n")
+    comp_ok, comp_msg = composition_gate()
+    print(f"[0a] 구성 진입점 — {comp_msg}")
+    if not comp_ok:
+        print("\n중단합니다. 두 상수를 맞추기 전에는 산출이 뒤섞입니다.")
+        return 1
     passed, msg = eod_gate(args.force)
     print(f"    → {'통과' if passed else '중단'}: {msg}\n")
     if not passed:
